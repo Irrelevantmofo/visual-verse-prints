@@ -19,16 +19,20 @@ Customer website plus admin and agent dashboards for Visual Verse Prints (Calooc
 1. An **agent refers a client** (`/agent/referrals/new`). The referral starts as *Submitted*.
 2. The **admin reviews** it (`/admin/referrals`) and approves it, or rejects it with a note the agent can see.
 3. The admin creates **quotations** and **orders** linked to the referral. Each order is credited to the referring agent.
-4. The admin records **payments**. Commission = the agent's rate × each payment (cancelled orders earn nothing).
-   Each order keeps the rate it was created with, so later rate changes don't affect past orders.
-5. Agents follow each referral: Submitted → Approved → Quoted → In production → Ready → Delivered.
-6. The **leaderboard** shows every agent's commission for the period. It uses a `security definer` function
+4. Commission is set **per order line**, because each product has a different margin. For example, an order with
+   stickers at 12% and flyers at 5%. Each line's rate is pre-filled from the product's rate in the Catalog, then the
+   agent's fallback rate, then the shop default (Settings), and the admin can change any line.
+5. The admin records **payments**. The agent earns the order's commission as the client pays. For example, 25% paid
+   means 25% of the commission is earned. Cancelled orders earn nothing, and saved orders keep their rates when
+   defaults change later.
+6. Agents follow each referral: Submitted → Approved → Quoted → In production → Ready → Delivered.
+7. The **leaderboard** shows every agent's commission for the period. It uses a `security definer` function
    that returns totals only, so agents never see each other's clients.
 
 ## Setup
 
 1. **Env vars:** copy `.env.example` to `.env.local` and fill in the values from Supabase → Project Settings → API.
-2. **Database:** apply `supabase/migrations/20261002000000_init_schema.sql`, using either the Supabase MCP or the SQL editor.
+2. **Database:** apply the files in `supabase/migrations/` in order, using either the Supabase MCP or the SQL editor.
 3. **Auth settings (Supabase dashboard → Authentication):**
    - Turn off **Allow new users to sign up**. Admins create agent accounts from `/admin/agents`.
    - Set **Site URL** to the production URL.
