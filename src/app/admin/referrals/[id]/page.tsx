@@ -5,7 +5,7 @@ import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, Table, Td,
 import { ReferralProgress } from "@/components/referral-progress";
 import { fmtDate, fmtDateShort, php } from "@/lib/format";
 import { ORDER_STATUS, PAYMENT_STATUS, QUOTE_STATUS, REFERRAL_STATUS } from "@/lib/labels";
-import { getOrders, getQuotations, getReferral } from "@/lib/queries";
+import { getOrders, getQuotations, getReferral, getReferralItems } from "@/lib/queries";
 import { ReviewForm } from "./review-form";
 
 export const metadata = { title: "Referral" };
@@ -14,7 +14,11 @@ export default async function AdminReferralDetail({ params }: PageProps<"/admin/
   const { id } = await params;
   const referral = await getReferral(id);
   if (!referral) notFound();
-  const [quotes, orders] = await Promise.all([getQuotations({ referralId: id }), getOrders({ referralId: id })]);
+  const [quotes, orders, requested] = await Promise.all([
+    getQuotations({ referralId: id }),
+    getOrders({ referralId: id }),
+    getReferralItems(id),
+  ]);
 
   return (
     <>
@@ -69,6 +73,38 @@ export default async function AdminReferralDetail({ params }: PageProps<"/admin/
                 <dd className="mt-0.5 whitespace-pre-line">{referral.notes ?? "—"}</dd>
               </div>
             </dl>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Requested products"
+              description={requested.length ? "From the agent. New orders and quotations start with these." : undefined}
+            />
+            {requested.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-graphite">{referral.interested_in ?? "The agent didn't list products."}</p>
+            ) : (
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>Product</Th>
+                    <Th className="text-right">Qty</Th>
+                    <Th>Details</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requested.map((it) => (
+                    <tr key={it.id}>
+                      <Td className="font-medium">
+                        {it.description}
+                        {!it.product_id && <span className="ml-2 text-xs font-normal text-graphite">(not in catalog)</span>}
+                      </Td>
+                      <Td className="text-right font-mono">{+it.qty.toFixed(2)}</Td>
+                      <Td className="text-graphite">{it.details ?? "—"}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
           </Card>
 
           <Card>

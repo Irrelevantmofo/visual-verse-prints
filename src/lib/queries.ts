@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { diffDays, monthEnd, monthStart, num, weekStart } from "@/lib/format";
 import { followUpFlag, isOpenQuote, type FollowUpFlag } from "@/lib/labels";
 import type {
+  ReferralItem,
   CommissionEarning,
   CommissionPayout,
   LeaderboardRow,
@@ -130,6 +131,13 @@ export async function getReferral(id: string): Promise<ReferralSummary | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("referral_summary").select("*").eq("id", id).maybeSingle();
   return data ? normReferral(data as ReferralSummary) : null;
+}
+
+export async function getReferralItems(referralId: string): Promise<ReferralItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("referral_items").select("*").eq("referral_id", referralId).order("position");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as ReferralItem[]).map((i) => ({ ...i, qty: num(i.qty) }));
 }
 
 export async function countPendingReferrals(): Promise<number> {

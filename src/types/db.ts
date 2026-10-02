@@ -68,6 +68,16 @@ export type Referral = {
   created_at: string;
 };
 
+export type ReferralItem = {
+  id: string;
+  referral_id: string;
+  product_id: string | null;
+  description: string;
+  qty: number;
+  details: string | null;
+  position: number;
+};
+
 export type ReferralSummary = Referral & {
   agent_name: string | null;
   order_count: number;

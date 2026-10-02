@@ -3,7 +3,8 @@ import { ArrowLeft } from "lucide-react";
 import { Card, PageHeader } from "@/components/ui";
 import { todayISO } from "@/lib/format";
 import { getFormOptions } from "@/lib/options";
-import { getSettings } from "@/lib/queries";
+import { getReferralItems, getSettings } from "@/lib/queries";
+import { itemsSummary } from "@/lib/format";
 import { QuoteForm } from "../quote-form";
 
 export const metadata = { title: "New quotation" };
@@ -13,6 +14,7 @@ export default async function NewQuotationPage({ searchParams }: PageProps<"/adm
   const referralId = typeof referral === "string" ? referral : undefined;
   const [{ agentOptions, referralOptions }, settings] = await Promise.all([getFormOptions(referralId), getSettings()]);
   const ref = referralOptions.find((r) => r.id === referralId);
+  const requested = referralId ? await getReferralItems(referralId) : [];
 
   return (
     <>
@@ -31,6 +33,7 @@ export default async function NewQuotationPage({ searchParams }: PageProps<"/adm
             agent_id: ref?.agentId ?? null,
             client_name: ref?.clientName ?? "",
             client_contact: ref?.clientContact ?? null,
+            description: requested.length ? itemsSummary(requested) : null,
           }}
         />
       </Card>

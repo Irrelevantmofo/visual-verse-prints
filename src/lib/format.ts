@@ -81,3 +81,8 @@ export const fmtMonth = (iso: string) => monthFmt.format(parseISODate(monthStart
 export function timestampToISODate(ts: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date(ts));
 }
+
+/** "Stickers ×300, Menu boards ×2" */
+export function itemsSummary(items: { description: string; qty: number | string }[]) {
+  return items.map((i) => (num(i.qty) === 1 ? i.description : `${i.description} ×${+num(i.qty).toFixed(2)}`)).join(", ");
+}

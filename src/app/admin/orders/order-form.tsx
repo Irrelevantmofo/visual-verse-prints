@@ -35,6 +35,7 @@ export function OrderForm({
   products,
   defaults,
   commission,
+  prefillItems,
 }: {
   order?: Order;
   items?: { description: string; qty: number; amount: number; product_id: string | null; commission_rate: number }[];
@@ -43,6 +44,8 @@ export function OrderForm({
   products: Pick<Product, "id" | "name" | "commission_rate">[];
   defaults: Partial<Order> & { quoted_amount?: number; description?: string | null };
   commission: CommissionDefaults;
+  /** Lines requested on the referral; the admin adds prices. */
+  prefillItems?: { description: string; qty: number; product_id: string | null }[];
 }) {
   const [state, action, pending] = useActionState(saveOrder, null);
   const v = { ...defaults, ...order };
@@ -69,7 +72,16 @@ export function OrderForm({
           rate: toPct(i.commission_rate),
           rateTouched: true,
         }))
-      : [
+      : prefillItems?.length
+        ? prefillItems.map((i) => ({
+            description: i.description,
+            qty: String(i.qty),
+            amount: "",
+            product_id: i.product_id,
+            rate: toPct(defaultRateFor(i.product_id, v.agent_id ?? "")),
+            rateTouched: false,
+          }))
+        : [
           {
             description: defaults.description ?? "",
             qty: "1",
@@ -184,15 +196,18 @@ export function OrderForm({
                       value={it.description}
                       onChange={(e) => {
                         const match = products.find((p) => p.name === e.target.value);
-                        const productId = match?.id ?? null;
-                        setItem(idx, {
-                          description: e.target.value,
-                          product_id: productId,
-                          // picking a catalog product applies its rate unless the admin already set one
-                          ...(!it.rateTouched || (match && match.commission_rate != null && productId !== it.product_id)
-                            ? { rate: toPct(defaultRateFor(productId, agentId)), rateTouched: false }
-                            : {}),
-                        });
+                        if (match && match.id !== it.product_id) {
+                          // Picked a different catalog product: link it and apply its rate
+                          setItem(idx, {
+                            description: e.target.value,
+                            product_id: match.id,
+                            rate: toPct(defaultRateFor(match.id, agentId)),
+                            rateTouched: false,
+                          });
+                        } else {
+                          // Free-text edits keep the line's product and rate
+                          setItem(idx, { description: e.target.value });
+                        }
                       }}
                       placeholder="e.g. Laminated calling cards"
                       className={inputStyles}
@@ -213,6 +228,8 @@ export function OrderForm({
                     <input
                       aria-label={`Item ${idx + 1} line total`}
                       type="number"
+                      required={it.description.trim() !== ""}
+                      placeholder="Price"
                       min="0"
                       step="0.01"
                       value={it.amount}

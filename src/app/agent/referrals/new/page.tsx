@@ -1,5 +1,4 @@
 import { Card, PageHeader } from "@/components/ui";
-import { getCatalog } from "@/lib/catalog";
 import { num, pct } from "@/lib/format";
 import { getCurrentProfile } from "@/lib/auth";
 import { getSettings } from "@/lib/queries";
@@ -16,12 +15,12 @@ const STEPS = [
 
 export default async function NewReferralPage() {
   const supabase = await createClient();
-  const [products, settings, me, { data: rates }] = await Promise.all([
-    getCatalog(),
+  const [settings, me, { data: rates }] = await Promise.all([
     getSettings(),
     getCurrentProfile(),
-    supabase.from("products").select("name, commission_rate").eq("active", true).order("sort_order"),
+    supabase.from("products").select("id, name, commission_rate").eq("active", true).order("sort_order"),
   ]);
+  const products = (rates ?? []).map((r) => ({ id: r.id as string, name: r.name as string }));
   const fallback = me?.commission_rate ?? settings.default_commission_rate;
   const rateRows = (rates ?? []).map((r) => ({
     name: r.name as string,
@@ -33,7 +32,7 @@ export default async function NewReferralPage() {
       <PageHeader title="Refer a client" description="You earn commission on what your referred clients pay. The rate depends on the product." />
       <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <Card className="h-fit p-5">
-          <ReferralForm products={products.map((p) => p.name)} />
+          <ReferralForm products={products} />
         </Card>
         <div className="space-y-6">
           <aside className="rounded-lg bg-ink p-5 text-paper/80">

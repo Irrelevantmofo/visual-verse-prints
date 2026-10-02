@@ -4,6 +4,7 @@ import { Card, PageHeader } from "@/components/ui";
 import { isISODate, num, todayISO } from "@/lib/format";
 import { getFormOptions, getOrderFormCommission } from "@/lib/options";
 import { createClient } from "@/lib/supabase/server";
+import { getReferralItems } from "@/lib/queries";
 import type { Quotation } from "@/types/db";
 import { OrderForm } from "../order-form";
 
@@ -26,6 +27,8 @@ export default async function NewOrderPage({ searchParams }: PageProps<"/admin/o
     getOrderFormCommission(),
   ]);
   const ref = referralOptions.find((r) => r.id === referralId);
+  // Starting from a referral (not a quote): begin with the products the agent listed
+  const requested = !quote && referralId ? await getReferralItems(referralId) : [];
 
   return (
     <>
@@ -39,6 +42,7 @@ export default async function NewOrderPage({ searchParams }: PageProps<"/admin/o
           referrals={referralOptions}
           products={products}
           commission={commission}
+          prefillItems={requested.map((i) => ({ description: i.details ? `${i.description} (${i.details})` : i.description, qty: i.qty, product_id: i.product_id }))}
           defaults={{
             order_date: isISODate(sp.date) ? sp.date : todayISO(),
             quotation_id: quote?.id ?? null,

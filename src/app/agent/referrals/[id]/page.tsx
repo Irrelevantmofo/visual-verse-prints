@@ -6,7 +6,7 @@ import { ReferralProgress } from "@/components/referral-progress";
 import { fmtDate, fmtDateShort, php } from "@/lib/format";
 import { ORDER_STATUS, PAYMENT_STATUS, QUOTE_STATUS, REFERRAL_STAGE } from "@/lib/labels";
 import { requireRole } from "@/lib/auth";
-import { getOrders, getQuotations, getReferral } from "@/lib/queries";
+import { getOrders, getQuotations, getReferral, getReferralItems } from "@/lib/queries";
 
 export const metadata = { title: "Referral" };
 
@@ -16,7 +16,11 @@ export default async function AgentReferralDetail({ params, searchParams }: Page
   const { submitted } = await searchParams;
   const referral = await getReferral(id);
   if (!referral || referral.agent_id !== me.id) notFound();
-  const [orders, quotes] = await Promise.all([getOrders({ referralId: id }), getQuotations({ referralId: id })]);
+  const [orders, quotes, requested] = await Promise.all([
+    getOrders({ referralId: id }),
+    getQuotations({ referralId: id }),
+    getReferralItems(id),
+  ]);
   const pending = orders.reduce((s, o) => s + o.commission_pending, 0);
 
   return (
@@ -134,8 +138,21 @@ export default async function AgentReferralDetail({ params, searchParams }: Page
               <dd className="break-words">{referral.client_contact}</dd>
             </div>
             <div>
-              <dt className="text-graphite">Interested in</dt>
-              <dd>{referral.interested_in ?? "—"}</dd>
+              <dt className="text-graphite">Products</dt>
+              <dd>
+                {requested.length ? (
+                  <ul className="mt-1 space-y-1.5">
+                    {requested.map((it) => (
+                      <li key={it.id}>
+                        <span className="font-mono text-xs text-graphite">{+it.qty.toFixed(2)}×</span> {it.description}
+                        {it.details && <span className="block text-xs text-graphite">{it.details}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  (referral.interested_in ?? "—")
+                )}
+              </dd>
             </div>
             <div>
               <dt className="text-graphite">Estimated budget</dt>
