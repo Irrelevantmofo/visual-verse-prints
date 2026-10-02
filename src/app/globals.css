@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/* Visual Verse Prints — tokens
+   ink:   warm press black       foil: brushed gold
+   paper: uncoated stock white   cmyk: registration accents (used only in the strip) */
+@theme {
+  --color-ink: #0e0d0b;
+  --color-ink-2: #1b1915;
+  --color-ink-3: #2a2721;
+  --color-foil: #c9a55a;
+  --color-foil-light: #e8cf8e;
+  --color-foil-dark: #8f7232;
+  --color-paper: #f7f6f2;
+  --color-paper-2: #eeece6;
+  --color-rule: #dcd8ce;
+  --color-graphite: #5d5a52;
+  --color-cyan: #00a3e0;
+  --color-magenta: #d6007e;
+  --color-yellow: #ffd100;
+
+  --font-display: var(--font-barlow-condensed), "Arial Narrow", sans-serif;
+  --font-serif: var(--font-cormorant), Georgia, serif;
+  --font-sans: var(--font-hanken), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-foil);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility foil-text {
+  background: linear-gradient(100deg, var(--color-foil-dark) 0%, var(--color-foil-light) 38%, var(--color-foil) 55%, var(--color-foil-dark) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Crop marks around an element (print trim guides) */
+@utility crop-marks {
+  position: relative;
+  --crop: 18px;
+  --crop-gap: 10px;
+  --crop-color: currentColor;
+  background-image:
+    linear-gradient(var(--crop-color), var(--crop-color)), linear-gradient(var(--crop-color), var(--crop-color)),
+    linear-gradient(var(--crop-color), var(--crop-color)), linear-gradient(var(--crop-color), var(--crop-color)),
+    linear-gradient(var(--crop-color), var(--crop-color)), linear-gradient(var(--crop-color), var(--crop-color)),
+    linear-gradient(var(--crop-color), var(--crop-color)), linear-gradient(var(--crop-color), var(--crop-color));
+  background-repeat: no-repeat;
+  background-size:
+    var(--crop) 1px, 1px var(--crop), var(--crop) 1px, 1px var(--crop),
+    var(--crop) 1px, 1px var(--crop), var(--crop) 1px, 1px var(--crop);
+  background-position:
+    0 var(--crop-gap), var(--crop-gap) 0,
+    100% var(--crop-gap), calc(100% - var(--crop-gap)) 0,
+    0 calc(100% - var(--crop-gap)), var(--crop-gap) 100%,
+    100% calc(100% - var(--crop-gap)), calc(100% - var(--crop-gap)) 100%;
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(-1deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(-3deg);
+  }
+}
+@keyframes foil-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

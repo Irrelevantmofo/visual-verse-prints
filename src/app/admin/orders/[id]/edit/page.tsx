@@ -1,0 +1,48 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { Card, PageHeader } from "@/components/ui";
+import { num } from "@/lib/format";
+import { getFormOptions } from "@/lib/options";
+import { createClient } from "@/lib/supabase/server";
+import type { Order, OrderItem } from "@/types/db";
+import { OrderForm } from "../../order-form";
+
+export const metadata = { title: "Edit order" };
+
+export default async function EditOrderPage({ params }: PageProps<"/admin/orders/[id]/edit">) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const [{ data: orderData }, { data: itemsData }, { data: products }] = await Promise.all([
+    supabase.from("orders").select("*").eq("id", id).maybeSingle(),
+    supabase.from("order_items").select("*").eq("order_id", id).order("position"),
+    supabase.from("products").select("id, name").order("sort_order"),
+  ]);
+  if (!orderData) notFound();
+  const order = orderData as Order;
+  const { agentOptions, referralOptions } = await getFormOptions(order.referral_id);
+
+  return (
+    <>
+      <Link href={`/admin/orders/${id}`} className="mb-3 inline-flex items-center gap-1 text-sm text-graphite hover:text-ink">
+        <ArrowLeft className="size-4" /> Order #{order.order_no}
+      </Link>
+      <PageHeader title={`Edit order #${order.order_no}`} description="Record payments from the order page." />
+      <Card className="max-w-4xl p-5">
+        <OrderForm
+          order={order}
+          items={((itemsData ?? []) as OrderItem[]).map((i) => ({
+            description: i.description,
+            qty: num(i.qty),
+            amount: num(i.amount),
+            product_id: i.product_id,
+          }))}
+          agents={agentOptions}
+          referrals={referralOptions}
+          products={products ?? []}
+          defaults={{}}
+        />
+      </Card>
+    </>
+  );
+}
