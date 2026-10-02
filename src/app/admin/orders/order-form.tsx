@@ -5,11 +5,27 @@ import { Plus, Trash2 } from "lucide-react";
 import { saveOrder } from "@/lib/actions/admin";
 import { buttonStyles, cx, Field, FormMessage, inputStyles } from "@/components/ui";
 import { DELIVERY_STATUS, ORDER_STATUS, PAYMENT_METHOD } from "@/lib/labels";
-import { php } from "@/lib/format";
+import { pct, php } from "@/lib/format";
 import type { Order, Product } from "@/types/db";
 
 type Option = { id: string; label: string; agentId?: string; clientName?: string; clientContact?: string };
-type Item = { description: string; qty: string; amount: string; product_id: string | null };
+type Item = {
+  description: string;
+  qty: string;
+  amount: string;
+  product_id: string | null;
+  /** commission %, as typed */
+  rate: string;
+  /** admin typed a rate by hand; don't overwrite it from defaults */
+  rateTouched: boolean;
+};
+
+export type CommissionDefaults = {
+  defaultRate: number;
+  agentRates: Record<string, number | null>;
+};
+
+const toPct = (fraction: number) => String(+(fraction * 100).toFixed(2));
 
 export function OrderForm({
   order,
@@ -18,13 +34,15 @@ export function OrderForm({
   referrals,
   products,
   defaults,
+  commission,
 }: {
   order?: Order;
-  items?: { description: string; qty: number; amount: number; product_id: string | null }[];
+  items?: { description: string; qty: number; amount: number; product_id: string | null; commission_rate: number }[];
   agents: Option[];
   referrals: Option[];
-  products: Pick<Product, "id" | "name">[];
+  products: Pick<Product, "id" | "name" | "commission_rate">[];
   defaults: Partial<Order> & { quoted_amount?: number; description?: string | null };
+  commission: CommissionDefaults;
 }) {
   const [state, action, pending] = useActionState(saveOrder, null);
   const v = { ...defaults, ...order };
@@ -33,19 +51,44 @@ export function OrderForm({
   const [source, setSource] = useState(v.source ?? (v.referral_id || v.agent_id ? "referral" : "direct"));
   const [clientName, setClientName] = useState(v.client_name ?? "");
   const [clientContact, setClientContact] = useState(v.client_contact ?? "");
-  const [items, setItems] = useState<Item[]>(
+  /** Default line rate: product → agent → shop default (same order as the database trigger). */
+  const defaultRateFor = (productId: string | null, agent: string) => {
+    const productRate = products.find((p) => p.id === productId)?.commission_rate;
+    if (productRate != null) return productRate;
+    const agentRate = agent ? commission.agentRates[agent] : null;
+    return agentRate ?? commission.defaultRate;
+  };
+
+  const [items, setItems] = useState<Item[]>(() =>
     initialItems?.length
-      ? initialItems.map((i) => ({ description: i.description, qty: String(i.qty), amount: String(i.amount), product_id: i.product_id }))
+      ? initialItems.map((i) => ({
+          description: i.description,
+          qty: String(i.qty),
+          amount: String(i.amount),
+          product_id: i.product_id,
+          rate: toPct(i.commission_rate),
+          rateTouched: true,
+        }))
       : [
           {
             description: defaults.description ?? "",
             qty: "1",
             amount: defaults.quoted_amount != null ? String(defaults.quoted_amount) : "",
             product_id: null,
+            rate: toPct(defaultRateFor(null, v.agent_id ?? "")),
+            rateTouched: false,
           },
         ],
   );
   const total = items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const lineCommission = (i: Item) => ((Number(i.amount) || 0) * (Number(i.rate) || 0)) / 100;
+  const commissionTotal = agentId ? items.reduce((s, i) => s + lineCommission(i), 0) : 0;
+
+  const changeAgent = (id: string) => {
+    setAgentId(id);
+    // Lines the admin hasn't set by hand follow the new agent's default
+    setItems((prev) => prev.map((it) => (it.rateTouched ? it : { ...it, rate: toPct(defaultRateFor(it.product_id, id)) })));
+  };
   const fe = state?.fieldErrors ?? {};
 
   const setItem = (idx: number, patch: Partial<Item>) => setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
@@ -55,7 +98,7 @@ export function OrderForm({
     const r = referrals.find((x) => x.id === id);
     if (r) {
       setSource("referral");
-      if (r.agentId) setAgentId(r.agentId);
+      if (r.agentId) changeAgent(r.agentId);
       if (r.clientName) setClientName(r.clientName);
       if (r.clientContact) setClientContact(r.clientContact);
     }
@@ -64,7 +107,13 @@ export function OrderForm({
   const payload = JSON.stringify(
     items
       .filter((i) => i.description.trim() || i.amount)
-      .map((i) => ({ description: i.description, qty: i.qty || "1", amount: i.amount || "0", product_id: i.product_id || null })),
+      .map((i) => ({
+        description: i.description,
+        qty: i.qty || "1",
+        amount: i.amount || "0",
+        product_id: i.product_id || null,
+        commission_pct: i.rate === "" ? "0" : i.rate,
+      })),
   );
 
   return (
@@ -99,7 +148,7 @@ export function OrderForm({
           </select>
         </Field>
         <Field label="Agent" htmlFor="agent_id" hint={referralId ? "Set by the referral." : "Earns commission on what the client pays."}>
-          <select id="agent_id" name="agent_id" value={agentId} disabled={!!referralId} onChange={(e) => setAgentId(e.target.value)} className={inputStyles}>
+          <select id="agent_id" name="agent_id" value={agentId} disabled={!!referralId} onChange={(e) => changeAgent(e.target.value)} className={inputStyles}>
             <option value="">No agent</option>
             {agents.map((a) => (
               <option key={a.id} value={a.id}>
@@ -114,12 +163,14 @@ export function OrderForm({
       <fieldset>
         <legend className="mb-3 font-display text-lg font-semibold uppercase">Items</legend>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="text-left font-mono text-[0.68rem] tracking-wider text-graphite uppercase">
                 <th className="pb-2 font-medium">Item</th>
                 <th className="w-24 pb-2 font-medium">Qty</th>
                 <th className="w-36 pb-2 font-medium">Line total (₱)</th>
+                <th className="w-28 pb-2 font-medium">Agent %</th>
+                <th className="w-28 pb-2 text-right font-medium">Commission</th>
                 <th className="w-10" />
               </tr>
             </thead>
@@ -133,7 +184,15 @@ export function OrderForm({
                       value={it.description}
                       onChange={(e) => {
                         const match = products.find((p) => p.name === e.target.value);
-                        setItem(idx, { description: e.target.value, product_id: match?.id ?? null });
+                        const productId = match?.id ?? null;
+                        setItem(idx, {
+                          description: e.target.value,
+                          product_id: productId,
+                          // picking a catalog product applies its rate unless the admin already set one
+                          ...(!it.rateTouched || (match && match.commission_rate != null && productId !== it.product_id)
+                            ? { rate: toPct(defaultRateFor(productId, agentId)), rateTouched: false }
+                            : {}),
+                        });
                       }}
                       placeholder="e.g. Laminated calling cards"
                       className={inputStyles}
@@ -161,6 +220,25 @@ export function OrderForm({
                       className={cx(inputStyles, "font-mono")}
                     />
                   </td>
+                  <td className="py-1 pr-2">
+                    <div className="relative">
+                      <input
+                        aria-label={`Item ${idx + 1} agent commission percent`}
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={it.rate}
+                        disabled={!agentId}
+                        onChange={(e) => setItem(idx, { rate: e.target.value, rateTouched: true })}
+                        className={cx(inputStyles, "pr-7 font-mono")}
+                      />
+                      <span className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-xs text-graphite">%</span>
+                    </div>
+                  </td>
+                  <td className={cx("py-1 pr-2 text-right font-mono", !agentId && "text-graphite/50")}>
+                    {agentId ? php(lineCommission(it)) : "—"}
+                  </td>
                   <td className="py-1">
                     <button
                       type="button"
@@ -185,15 +263,39 @@ export function OrderForm({
         <div className="mt-2 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => setItems((prev) => [...prev, { description: "", qty: "1", amount: "", product_id: null }])}
+            onClick={() =>
+              setItems((prev) => [
+                ...prev,
+                { description: "", qty: "1", amount: "", product_id: null, rate: toPct(defaultRateFor(null, agentId)), rateTouched: false },
+              ])
+            }
             className={buttonStyles.secondary}
           >
             <Plus className="size-4" /> Add item
           </button>
-          <p className="text-sm">
-            Order total <span className="ml-2 font-mono text-base font-semibold">{php(total)}</span>
-          </p>
+          <div className="text-right text-sm">
+            <p>
+              Order total <span className="ml-2 font-mono text-base font-semibold">{php(total)}</span>
+            </p>
+            <p className="mt-0.5 text-graphite">
+              {agentId ? (
+                <>
+                  Agent commission{" "}
+                  <span className="ml-2 font-mono text-ink">{php(commissionTotal)}</span>
+                  {total > 0 && <span className="ml-1 text-xs">({pct(commissionTotal / total)} overall)</span>}
+                </>
+              ) : (
+                "No agent, so no commission"
+              )}
+            </p>
+          </div>
         </div>
+        {agentId && (
+          <p className="mt-2 text-xs text-graphite">
+            Each line starts at the product&apos;s commission rate, or the agent&apos;s rate if the product has none. Change any line as needed. The agent earns
+            it as the client pays.
+          </p>
+        )}
         {fe.items && <p className="mt-1 text-xs text-rose-700">{fe.items}</p>}
       </fieldset>
 

@@ -26,7 +26,12 @@ export function NewAgentForm({ defaultRatePct }: { defaultRatePct: number }) {
       <Field label="Phone" htmlFor="phone">
         <input id="phone" name="phone" className={inputStyles} />
       </Field>
-      <Field label="Commission rate (%)" htmlFor="commission_rate" hint={`Blank uses the default (${defaultRatePct}%).`} error={fe.commission_rate}>
+      <Field
+        label="Fallback commission (%)"
+        htmlFor="commission_rate"
+        hint={`For products without their own rate. Blank uses the shop default (${defaultRatePct}%).`}
+        error={fe.commission_rate}
+      >
         <input id="commission_rate" name="commission_rate" type="number" min="0" max="100" step="0.1" className={cx(inputStyles, "font-mono")} />
       </Field>
       <Field label="Temporary password" htmlFor="password" error={fe.password} hint="Share it privately. They can change it after signing in." className="sm:col-span-2">
@@ -69,7 +74,7 @@ export function EditAgentForm({ agent }: { agent: Profile }) {
       <Field label="Phone" htmlFor={`phone-${id}`}>
         <input id={`phone-${id}`} name="phone" defaultValue={agent.phone ?? ""} className={inputStyles} />
       </Field>
-      <Field label="Rate (%)" htmlFor={`rate-${id}`} error={fe.commission_rate}>
+      <Field label="Fallback %" htmlFor={`rate-${id}`} error={fe.commission_rate}>
         <input
           id={`rate-${id}`}
           name="commission_rate"

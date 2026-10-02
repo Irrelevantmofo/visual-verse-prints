@@ -12,7 +12,7 @@ export default async function AgentsPage() {
 
   return (
     <>
-      <PageHeader title="Agents" description={`Default commission: ${pct(settings.default_commission_rate)} of what clients pay.`} />
+      <PageHeader title="Agents" description={`Commission is set per product on each order. An agent's rate below is used for products without their own rate (shop default ${pct(settings.default_commission_rate)}).`} />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_26rem]">
         <Card>
@@ -36,7 +36,7 @@ export default async function AgentsPage() {
                           )}
                         </p>
                         <p className="text-xs text-graphite">
-                          {a.email} · {a.commission_rate != null ? `${pct(a.commission_rate)} rate` : `default rate (${pct(settings.default_commission_rate)})`}
+                          {a.email} · {a.commission_rate != null ? `${pct(a.commission_rate)} fallback rate` : `shop default (${pct(settings.default_commission_rate)})`}
                         </p>
                       </div>
                       {s && (

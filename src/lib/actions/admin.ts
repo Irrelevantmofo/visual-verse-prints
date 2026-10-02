@@ -165,6 +165,11 @@ const itemSchema = z.object({
   qty: z.coerce.number().positive("Quantity must be more than 0."),
   amount: money,
   product_id: z.uuid().nullable().optional(),
+  // entered as a percent in the form; stored as a fraction
+  commission_pct: z.coerce
+    .number({ error: "Enter a commission %." })
+    .min(0, "Commission can't be negative.")
+    .max(100, "Commission can't exceed 100%."),
 });
 
 const orderSchema = z.object({
@@ -223,7 +228,14 @@ export async function saveOrder(_prev: ActionState, formData: FormData): Promise
 
   const { error: itemErr } = await supabase
     .from("order_items")
-    .insert(items.map((it, position) => ({ ...it, order_id: orderId, position })));
+    .insert(
+      items.map(({ commission_pct, ...it }, position) => ({
+        ...it,
+        commission_rate: Math.round(commission_pct * 100) / 10000,
+        order_id: orderId,
+        position,
+      })),
+    );
   if (itemErr) return { error: itemErr.message };
 
   if (!id && initial_payment > 0) {
@@ -428,6 +440,7 @@ const productSchema = z.object({
     .transform((v) => (v === undefined || v === "" ? null : Number(v)))
     .pipe(z.number().min(0).nullable()),
   unit: optionalText,
+  commission_rate: rateField,
   image_url: optionalText,
   sort_order: z.coerce.number().int().default(0),
   active: z

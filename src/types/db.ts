@@ -44,6 +44,8 @@ export type Product = {
   description: string | null;
   starting_price: number | null;
   unit: string | null;
+  /** Agent commission for this product; null = use the agent's/shop default. */
+  commission_rate: number | null;
   image_url: string | null;
   active: boolean;
   sort_order: number;
@@ -109,7 +111,8 @@ export type Order = {
   client_name: string;
   client_contact: string | null;
   total_amount: number;
-  commission_rate: number;
+  /** Σ(line amount × line rate); 0 when the order has no agent. */
+  commission_total: number;
   order_status: OrderStatus;
   delivery_status: DeliveryStatus;
   notes: string | null;
@@ -122,6 +125,8 @@ export type OrderSummary = Order & {
   paid_amount: number;
   balance: number;
   payment_status: PaymentStatus;
+  /** Effective rate across all lines (commission_total / total_amount). */
+  commission_rate: number;
   commission_earned: number;
   commission_pending: number;
 };
@@ -133,6 +138,7 @@ export type OrderItem = {
   description: string;
   qty: number;
   amount: number;
+  commission_rate: number;
   position: number;
 };
 

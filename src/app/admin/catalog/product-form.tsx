@@ -40,6 +40,23 @@ export function ProductForm({ product, nextSort }: { product?: Product; nextSort
       <Field label="Description" htmlFor={`desc-${k}`} className="sm:col-span-2">
         <textarea id={`desc-${k}`} name="description" rows={2} defaultValue={product?.description ?? ""} className={inputStyles} />
       </Field>
+      <Field
+        label="Agent commission (%)"
+        htmlFor={`comm-${k}`}
+        hint="Pre-fills this product's lines on orders. Blank uses the agent's rate."
+        error={fe.commission_rate}
+      >
+        <input
+          id={`comm-${k}`}
+          name="commission_rate"
+          type="number"
+          min="0"
+          max="100"
+          step="0.1"
+          defaultValue={product?.commission_rate != null ? +(product.commission_rate * 100).toFixed(2) : ""}
+          className={cx(inputStyles, "font-mono")}
+        />
+      </Field>
       <Field label="Image URL" htmlFor={`img-${k}`} hint="Optional, for the future online shop.">
         <input id={`img-${k}`} name="image_url" type="url" defaultValue={product?.image_url ?? ""} className={inputStyles} />
       </Field>

@@ -1,5 +1,7 @@
 import "server-only";
-import { getAgents, getReferrals } from "@/lib/queries";
+import { getAgents, getReferrals, getSettings } from "@/lib/queries";
+import { createClient } from "@/lib/supabase/server";
+import { num } from "@/lib/format";
 
 /** Select options shared by the quotation and order forms. */
 export async function getFormOptions(includeReferralId?: string | null) {
@@ -22,4 +24,25 @@ export async function getFormOptions(includeReferralId?: string | null) {
     clientContact: r.client_contact,
   }));
   return { agentOptions, referralOptions, referrals: refs };
+}
+
+/** Products (with their commission rates) plus agent/shop default rates, for the order form. */
+export async function getOrderFormCommission() {
+  const supabase = await createClient();
+  const [agents, settings, { data: products }] = await Promise.all([
+    getAgents(),
+    getSettings(),
+    supabase.from("products").select("id, name, commission_rate").order("sort_order"),
+  ]);
+  return {
+    products: (products ?? []).map((p) => ({
+      id: p.id as string,
+      name: p.name as string,
+      commission_rate: p.commission_rate == null ? null : num(p.commission_rate),
+    })),
+    commission: {
+      defaultRate: settings.default_commission_rate,
+      agentRates: Object.fromEntries(agents.map((a) => [a.id, a.commission_rate])),
+    },
+  };
 }

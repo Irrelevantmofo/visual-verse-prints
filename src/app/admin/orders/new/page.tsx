@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card, PageHeader } from "@/components/ui";
 import { isISODate, num, todayISO } from "@/lib/format";
-import { getFormOptions } from "@/lib/options";
+import { getFormOptions, getOrderFormCommission } from "@/lib/options";
 import { createClient } from "@/lib/supabase/server";
 import type { Quotation } from "@/types/db";
 import { OrderForm } from "../order-form";
@@ -21,9 +21,9 @@ export default async function NewOrderPage({ searchParams }: PageProps<"/admin/o
   }
   const referralId = quote?.referral_id ?? (typeof sp.referral === "string" ? sp.referral : undefined);
 
-  const [{ agentOptions, referralOptions }, { data: products }] = await Promise.all([
+  const [{ agentOptions, referralOptions }, { products, commission }] = await Promise.all([
     getFormOptions(referralId),
-    supabase.from("products").select("id, name").order("sort_order"),
+    getOrderFormCommission(),
   ]);
   const ref = referralOptions.find((r) => r.id === referralId);
 
@@ -37,7 +37,8 @@ export default async function NewOrderPage({ searchParams }: PageProps<"/admin/o
         <OrderForm
           agents={agentOptions}
           referrals={referralOptions}
-          products={products ?? []}
+          products={products}
+          commission={commission}
           defaults={{
             order_date: isISODate(sp.date) ? sp.date : todayISO(),
             quotation_id: quote?.id ?? null,

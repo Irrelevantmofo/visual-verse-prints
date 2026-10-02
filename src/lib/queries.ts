@@ -21,6 +21,7 @@ function normOrder(o: OrderSummary): OrderSummary {
     ...o,
     total_amount: num(o.total_amount),
     commission_rate: num(o.commission_rate),
+    commission_total: num(o.commission_total),
     paid_amount: num(o.paid_amount),
     balance: num(o.balance),
     commission_earned: num(o.commission_earned),

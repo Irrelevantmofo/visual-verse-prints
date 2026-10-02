@@ -48,7 +48,11 @@ export default async function OrderDetailPage({ params }: PageProps<"/admin/orde
         <StatTile
           label="Agent commission"
           value={php(order.commission_earned)}
-          hint={order.agent_id ? `${pct(order.commission_rate)} of paid · ${php(order.commission_pending)} more when fully paid` : "No agent on this order"}
+          hint={
+            order.agent_id
+              ? `of ${php(order.commission_total)} total · ${php(order.commission_pending)} more when fully paid`
+              : "No agent on this order"
+          }
         />
       </div>
 
@@ -111,6 +115,8 @@ export default async function OrderDetailPage({ params }: PageProps<"/admin/orde
                   <Th className="text-right">Qty</Th>
                   <Th className="text-right">Unit</Th>
                   <Th className="text-right">Line total</Th>
+                  {order.agent_id && <Th className="text-right">Agent %</Th>}
+                  {order.agent_id && <Th className="text-right">Commission</Th>}
                 </tr>
               </thead>
               <tbody className="tabular">
@@ -120,6 +126,8 @@ export default async function OrderDetailPage({ params }: PageProps<"/admin/orde
                     <Td className="text-right font-mono">{num(it.qty)}</Td>
                     <Td className="text-right font-mono text-graphite">{php(num(it.amount) / num(it.qty))}</Td>
                     <Td className="text-right font-mono">{php(it.amount)}</Td>
+                    {order.agent_id && <Td className="text-right font-mono text-graphite">{pct(it.commission_rate)}</Td>}
+                    {order.agent_id && <Td className="text-right font-mono">{php(num(it.amount) * num(it.commission_rate))}</Td>}
                   </tr>
                 ))}
               </tbody>

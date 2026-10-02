@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Card, PageHeader } from "@/components/ui";
 import { num } from "@/lib/format";
-import { getFormOptions } from "@/lib/options";
+import { getFormOptions, getOrderFormCommission } from "@/lib/options";
 import { createClient } from "@/lib/supabase/server";
 import type { Order, OrderItem } from "@/types/db";
 import { OrderForm } from "../../order-form";
@@ -13,10 +13,10 @@ export const metadata = { title: "Edit order" };
 export default async function EditOrderPage({ params }: PageProps<"/admin/orders/[id]/edit">) {
   const { id } = await params;
   const supabase = await createClient();
-  const [{ data: orderData }, { data: itemsData }, { data: products }] = await Promise.all([
+  const [{ data: orderData }, { data: itemsData }, { products, commission }] = await Promise.all([
     supabase.from("orders").select("*").eq("id", id).maybeSingle(),
     supabase.from("order_items").select("*").eq("order_id", id).order("position"),
-    supabase.from("products").select("id, name").order("sort_order"),
+    getOrderFormCommission(),
   ]);
   if (!orderData) notFound();
   const order = orderData as Order;
@@ -36,10 +36,12 @@ export default async function EditOrderPage({ params }: PageProps<"/admin/orders
             qty: num(i.qty),
             amount: num(i.amount),
             product_id: i.product_id,
+            commission_rate: num(i.commission_rate),
           }))}
           agents={agentOptions}
           referrals={referralOptions}
-          products={products ?? []}
+          products={products}
+          commission={commission}
           defaults={{}}
         />
       </Card>

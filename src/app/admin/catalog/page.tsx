@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Badge, Card, CardHeader, PageHeader, buttonStyles } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
 import { deleteProduct } from "@/lib/actions/admin";
-import { phpShort } from "@/lib/format";
+import { num, pct, phpShort } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type { Product } from "@/types/db";
 import { ProductForm } from "./product-form";
@@ -43,6 +43,9 @@ export default async function CatalogPage() {
                     </span>
                     <span className="flex items-center gap-2 text-sm">
                       <span className="font-mono text-graphite">{p.starting_price != null ? `from ${phpShort(p.starting_price)}` : "quote"}</span>
+                      <Badge tone={p.commission_rate != null ? "gold" : "neutral"}>
+                        {p.commission_rate != null ? `${pct(num(p.commission_rate))} agent` : "agent rate"}
+                      </Badge>
                       {!p.active && <Badge tone="neutral">Hidden</Badge>}
                     </span>
                   </summary>

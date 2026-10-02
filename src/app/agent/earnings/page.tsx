@@ -1,17 +1,16 @@
 import { Card, CardHeader, EmptyState, PageHeader, StatTile, Table, Td, Th } from "@/components/ui";
 import { fmtDate, fmtMonth, pct, php } from "@/lib/format";
 import { requireRole } from "@/lib/auth";
-import { getCommissionEarnings, getOrders, getPayouts, getSettings } from "@/lib/queries";
+import { getCommissionEarnings, getOrders, getPayouts } from "@/lib/queries";
 
 export const metadata = { title: "Earnings" };
 
 export default async function AgentEarnings() {
   const me = await requireRole("agent");
-  const [earnings, payouts, orders, settings] = await Promise.all([
+  const [earnings, payouts, orders] = await Promise.all([
     getCommissionEarnings({ agentId: me.id }),
     getPayouts({ agentId: me.id }),
     getOrders({ agentId: me.id }),
-    getSettings(),
   ]);
 
   const earned = earnings.reduce((s, e) => s + e.commission, 0);
@@ -30,7 +29,7 @@ export default async function AgentEarnings() {
     <>
       <PageHeader
         title="Earnings"
-        description={`Your rate: ${pct(me.commission_rate ?? settings.default_commission_rate)} of each payment your referred clients make.`}
+        description="Commission is set per product on each order. You earn it as your referred clients pay."
       />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Not yet paid to you" value={php(Math.max(earned - paid, 0))} emphasis />

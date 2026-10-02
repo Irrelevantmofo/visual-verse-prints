@@ -13,7 +13,7 @@ export function SettingsForm({ ratePct, validityDays, dueSoonDays }: { ratePct: 
         label="Default commission rate (%)"
         htmlFor="default_commission_rate"
         error={fe.default_commission_rate}
-        hint="Applies to agents without their own rate. Each order keeps the rate it was created with."
+        hint="Used on order lines when neither the product nor the agent has a rate. Each order keeps the rates it was saved with."
       >
         <input
           id="default_commission_rate"
