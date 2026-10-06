@@ -42,4 +42,7 @@ export const SHOP = {
   city: "Caloocan City",
   facebookUrl: process.env.NEXT_PUBLIC_FACEBOOK_URL ?? "https://www.facebook.com/profile.php?id=61573844768004",
   messengerUrl: process.env.NEXT_PUBLIC_MESSENGER_URL ?? "https://m.me/61573844768004",
+  phone: "0946 074 9319",
+  phoneHref: "tel:+639460749319",
+  email: "visualverseprintingstudio@gmail.com",
 };

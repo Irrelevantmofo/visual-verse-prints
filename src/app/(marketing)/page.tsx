@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, MessageCircle, ExternalLink } from "lucide-react";
+import { ArrowRight, MessageCircle, ExternalLink, Phone, Mail } from "lucide-react";
 import { LogoMark, Wordmark } from "@/components/logo";
 import { PressSheet, RegistrationStrip } from "@/components/marketing/press-sheet";
 import { getCatalog, SHOP } from "@/lib/catalog";
@@ -41,6 +41,7 @@ export default async function HomePage() {
             <a href="#services" className="hover:text-paper">Services</a>
             <a href="#process" className="hover:text-paper">How it works</a>
             <a href="#about" className="hover:text-paper">About</a>
+            <a href="#contact" className="hover:text-paper">Contact</a>
           </nav>
           <a
             href={SHOP.messengerUrl}
@@ -232,6 +233,55 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ── Contact ── */}
+        <section id="contact" className="scroll-mt-8 bg-foil text-ink">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-8 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:py-20">
+            <div>
+              <p className="font-mono text-xs tracking-[0.3em] text-ink/70 uppercase">Contact us</p>
+              <h2 className="mt-3 font-display text-5xl font-bold uppercase sm:text-6xl">Tell us what you need printed</h2>
+              <p className="mt-3 max-w-md text-ink/80">Call, text, email or message us. We&apos;ll reply with a quote.</p>
+            </div>
+            <ul className="divide-y divide-ink/20 border-y border-ink/20">
+              <li>
+                <a href={SHOP.phoneHref} className="group flex items-center gap-4 py-5">
+                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-ink text-foil-light">
+                    <Phone className="size-5" aria-hidden />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-mono text-[0.68rem] tracking-widest text-ink/70 uppercase">Call or text</span>
+                    <span className="block font-display text-3xl font-semibold tracking-wide group-hover:underline">{SHOP.phone}</span>
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a href={`mailto:${SHOP.email}`} className="group flex items-center gap-4 py-5">
+                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-ink text-foil-light">
+                    <Mail className="size-5" aria-hidden />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-mono text-[0.68rem] tracking-widest text-ink/70 uppercase">Email</span>
+                    <span className="block text-[0.95rem] font-medium break-words group-hover:underline sm:text-xl">
+                      {SHOP.email.split("@")[0]}
+                      <wbr />@{SHOP.email.split("@")[1]}
+                    </span>
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a href={SHOP.messengerUrl} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 py-5">
+                  <span className="grid size-11 shrink-0 place-items-center rounded-full bg-ink text-foil-light">
+                    <MessageCircle className="size-5" aria-hidden />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-mono text-[0.68rem] tracking-widest text-ink/70 uppercase">Messenger</span>
+                    <span className="block text-lg font-medium group-hover:underline sm:text-xl">Message Visual Verse Prints</span>
+                  </span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </section>
       </main>
 
       {/* ── Footer ── */}
@@ -243,7 +293,13 @@ export default async function HomePage() {
               © {new Date().getFullYear()} {SHOP.name} · {SHOP.city}
             </span>
           </div>
-          <div className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <a href={SHOP.phoneHref} className="hover:text-paper">
+              {SHOP.phone}
+            </a>
+            <a href={`mailto:${SHOP.email}`} className="break-all hover:text-paper">
+              {SHOP.email}
+            </a>
             <a href={SHOP.facebookUrl} target="_blank" rel="noopener noreferrer" className="hover:text-paper">
               Facebook
             </a>
