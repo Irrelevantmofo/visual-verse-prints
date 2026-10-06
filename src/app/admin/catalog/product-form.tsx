@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { saveProduct } from "@/lib/actions/admin";
 import { buttonStyles, cx, Field, FormMessage, inputStyles } from "@/components/ui";
+import { ImageUpload } from "@/components/staff/image-upload";
 import type { Product } from "@/types/db";
 
 export function ProductForm({ product, nextSort }: { product?: Product; nextSort?: number }) {
@@ -57,9 +58,11 @@ export function ProductForm({ product, nextSort }: { product?: Product; nextSort
           className={cx(inputStyles, "font-mono")}
         />
       </Field>
-      <Field label="Image URL" htmlFor={`img-${k}`} hint="Optional, for the future online shop.">
-        <input id={`img-${k}`} name="image_url" type="url" defaultValue={product?.image_url ?? ""} className={inputStyles} />
-      </Field>
+      <div className="sm:col-span-2">
+        <p className="mb-1 text-sm font-medium">Photo</p>
+        <ImageUpload name="image_url" initialUrl={product?.image_url ?? null} alt={product?.name ?? "New product"} />
+        {fe.image_url && <p className="mt-1 text-xs text-rose-700">{fe.image_url}</p>}
+      </div>
       <div className="flex items-end gap-4">
         <Field label="Order" htmlFor={`sort-${k}`}>
           <input

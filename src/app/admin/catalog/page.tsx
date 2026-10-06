@@ -1,8 +1,11 @@
+import Image from "next/image";
 import Link from "next/link";
+import { ImageOff } from "lucide-react";
 import { Badge, Card, CardHeader, PageHeader, buttonStyles } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
 import { deleteProduct } from "@/lib/actions/admin";
 import { num, pct, phpShort } from "@/lib/format";
+import { isHostedProductImage } from "@/lib/images";
 import { createClient } from "@/lib/supabase/server";
 import type { Product } from "@/types/db";
 import { ProductForm } from "./product-form";
@@ -37,9 +40,18 @@ export default async function CatalogPage() {
               <li key={p.id}>
                 <details className="group">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 hover:bg-paper">
-                    <span>
-                      <span className="font-medium">{p.name}</span>
-                      <span className="ml-2 text-xs text-graphite">{p.category}</span>
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded border border-rule bg-paper-2 text-graphite/60">
+                        {isHostedProductImage(p.image_url) ? (
+                          <Image src={p.image_url} alt="" fill sizes="40px" className="object-cover" />
+                        ) : (
+                          <ImageOff className="size-4" aria-hidden />
+                        )}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="font-medium">{p.name}</span>
+                        <span className="ml-2 text-xs text-graphite">{p.category}</span>
+                      </span>
                     </span>
                     <span className="flex items-center gap-2 text-sm">
                       <span className="font-mono text-graphite">{p.starting_price != null ? `from ${phpShort(p.starting_price)}` : "quote"}</span>
