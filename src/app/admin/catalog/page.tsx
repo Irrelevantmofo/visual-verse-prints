@@ -5,12 +5,14 @@ import { Badge, Card, CardHeader, PageHeader, buttonStyles } from "@/components/
 import { ConfirmButton } from "@/components/confirm-button";
 import { deleteProduct } from "@/lib/actions/admin";
 import { num, pct, phpShort } from "@/lib/format";
-import { isHostedProductImage } from "@/lib/images";
+import { productPhotos } from "@/lib/images";
 import { createClient } from "@/lib/supabase/server";
 import type { Product } from "@/types/db";
 import { ProductForm } from "./product-form";
 
 export const metadata = { title: "Catalog" };
+
+const photos = (p: Product) => productPhotos(p);
 
 export default async function CatalogPage() {
   const supabase = await createClient();
@@ -42,15 +44,18 @@ export default async function CatalogPage() {
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 hover:bg-paper">
                     <span className="flex min-w-0 items-center gap-3">
                       <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded border border-rule bg-paper-2 text-graphite/60">
-                        {isHostedProductImage(p.image_url) ? (
-                          <Image src={p.image_url} alt="" fill sizes="40px" className="object-cover" />
+                        {photos(p).length > 0 ? (
+                          <Image src={photos(p)[0]} alt="" fill sizes="40px" className="object-cover" />
                         ) : (
                           <ImageOff className="size-4" aria-hidden />
                         )}
                       </span>
                       <span className="min-w-0">
                         <span className="font-medium">{p.name}</span>
-                        <span className="ml-2 text-xs text-graphite">{p.category}</span>
+                        <span className="ml-2 text-xs text-graphite">
+                          {p.category}
+                          {photos(p).length > 0 && ` · ${photos(p).length} ${photos(p).length === 1 ? "photo" : "photos"}`}
+                        </span>
                       </span>
                     </span>
                     <span className="flex items-center gap-2 text-sm">

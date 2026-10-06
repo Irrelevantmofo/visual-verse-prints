@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isHostedProductImage, PRODUCT_BUCKET, productImagePath } from "@/lib/images";
+import { isHostedProductImage, MAX_PRODUCT_IMAGES, PRODUCT_BUCKET, productImagePath, productPhotos } from "@/lib/images";
 import { zodErrorState, type ActionState } from "@/lib/actions/types";
 
 /* ── shared field helpers ── */
@@ -442,7 +442,23 @@ const productSchema = z.object({
     .pipe(z.number().min(0).nullable()),
   unit: optionalText,
   commission_rate: rateField,
-  image_url: optionalText.refine((v) => v == null || isHostedProductImage(v), "Upload the image file instead of pasting a link."),
+  image_urls: z
+    .string()
+    .optional()
+    .transform((v, ctx) => {
+      if (!v) return [];
+      try {
+        return JSON.parse(v);
+      } catch {
+        ctx.addIssue({ code: "custom", message: "The photo list is invalid." });
+        return z.NEVER;
+      }
+    })
+    .pipe(
+      z
+        .array(z.string().refine(isHostedProductImage, "Upload image files instead of pasting links."))
+        .max(MAX_PRODUCT_IMAGES, `Up to ${MAX_PRODUCT_IMAGES} photos per product.`),
+    ),
   sort_order: z.coerce.number().int().default(0),
   active: z
     .string()
@@ -454,14 +470,17 @@ export async function saveProduct(_prev: ActionState, formData: FormData): Promi
   await requireRole("admin");
   const parsed = productSchema.safeParse(formObject(formData));
   if (!parsed.success) return zodErrorState(parsed.error);
-  const { id, ...values } = parsed.data;
+  const { id, ...fields } = parsed.data;
+  const imageUrls = [...new Set(fields.image_urls)];
+  // image_url mirrors the cover (first photo)
+  const values = { ...fields, image_urls: imageUrls, image_url: imageUrls[0] ?? null };
   const supabase = await createClient();
 
-  // Remember the current photo so its file can be removed if this save replaces or clears it
-  let previousImage: string | null = null;
+  // Remember the current photos so files dropped by this save can be removed from storage
+  let previous: string[] = [];
   if (id) {
-    const { data: existing } = await supabase.from("products").select("image_url").eq("id", id).maybeSingle();
-    previousImage = (existing?.image_url as string | null) ?? null;
+    const { data: existing } = await supabase.from("products").select("image_url, image_urls").eq("id", id).maybeSingle();
+    previous = existing ? productPhotos(existing) : [];
   }
 
   const { error } = id
@@ -469,27 +488,29 @@ export async function saveProduct(_prev: ActionState, formData: FormData): Promi
     : await supabase.from("products").insert(values);
   if (error) return { error: error.code === "23505" ? "That slug is already used." : error.message };
 
-  if (previousImage !== (values.image_url ?? null)) await removeProductImage(supabase, previousImage);
+  await removeProductImages(
+    supabase,
+    previous.filter((url) => !imageUrls.includes(url)),
+  );
 
   revalidatePath("/");
   revalidatePath("/admin/catalog");
   return { message: id ? "Product saved." : "Product added." };
 }
 
-/** Best-effort cleanup of a photo that's no longer referenced. Never blocks the save. */
-async function removeProductImage(supabase: Awaited<ReturnType<typeof createClient>>, url: string | null) {
-  const path = productImagePath(url);
-  if (!path) return;
-  await supabase.storage.from(PRODUCT_BUCKET).remove([path]);
+/** Best-effort cleanup of photos that are no longer referenced. Never blocks the save. */
+async function removeProductImages(supabase: Awaited<ReturnType<typeof createClient>>, urls: string[]) {
+  const paths = urls.map(productImagePath).filter((p): p is string => p !== null);
+  if (paths.length) await supabase.storage.from(PRODUCT_BUCKET).remove(paths);
 }
 
 export async function deleteProduct(formData: FormData) {
   await requireRole("admin");
   const id = z.uuid().parse(formData.get("id"));
   const supabase = await createClient();
-  const { data: existing } = await supabase.from("products").select("image_url").eq("id", id).maybeSingle();
+  const { data: existing } = await supabase.from("products").select("image_url, image_urls").eq("id", id).maybeSingle();
   const { error } = await supabase.from("products").delete().eq("id", id);
-  if (!error) await removeProductImage(supabase, (existing?.image_url as string | null) ?? null);
+  if (!error && existing) await removeProductImages(supabase, productPhotos(existing));
   revalidatePath("/");
   revalidatePath("/admin/catalog");
 }

@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import { saveProduct } from "@/lib/actions/admin";
 import { buttonStyles, cx, Field, FormMessage, inputStyles } from "@/components/ui";
-import { ImageUpload } from "@/components/staff/image-upload";
+import { ImageGalleryUpload } from "@/components/staff/image-upload";
+import { productPhotos } from "@/lib/images";
 import type { Product } from "@/types/db";
 
 export function ProductForm({ product, nextSort }: { product?: Product; nextSort?: number }) {
@@ -59,9 +60,14 @@ export function ProductForm({ product, nextSort }: { product?: Product; nextSort
         />
       </Field>
       <div className="sm:col-span-2">
-        <p className="mb-1 text-sm font-medium">Photo</p>
-        <ImageUpload name="image_url" initialUrl={product?.image_url ?? null} alt={product?.name ?? "New product"} />
-        {fe.image_url && <p className="mt-1 text-xs text-rose-700">{fe.image_url}</p>}
+        <p className="mb-2 text-sm font-medium">Photos of finished work</p>
+        <ImageGalleryUpload
+          name="image_urls"
+          initialUrls={product ? productPhotos(product) : []}
+          legacyLink={product?.image_url ?? null}
+          alt={product?.name ?? "New product"}
+        />
+        {fe.image_urls && <p className="mt-1 text-xs text-rose-700">{fe.image_urls}</p>}
       </div>
       <div className="flex items-end gap-4">
         <Field label="Order" htmlFor={`sort-${k}`}>

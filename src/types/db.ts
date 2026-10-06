@@ -46,7 +46,10 @@ export type Product = {
   unit: string | null;
   /** Agent commission for this product; null = use the agent's/shop default. */
   commission_rate: number | null;
+  /** Cover photo (first of image_urls); kept in sync on save. */
   image_url: string | null;
+  /** Showcase photos of finished work, in display order. */
+  image_urls: string[];
   active: boolean;
   sort_order: number;
 };

@@ -1,11 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, MessageCircle, ExternalLink, Phone, Mail } from "lucide-react";
 import { LogoMark, Wordmark } from "@/components/logo";
 import { PressSheet, RegistrationStrip } from "@/components/marketing/press-sheet";
+import { ProductGallery } from "@/components/marketing/product-gallery";
 import { getCatalog, SHOP } from "@/lib/catalog";
 import { phpShort } from "@/lib/format";
-import { isHostedProductImage } from "@/lib/images";
+import { productPhotos } from "@/lib/images";
 
 export const revalidate = 300;
 
@@ -28,10 +28,14 @@ const STEPS = [
   },
 ];
 
+// How many columns the closing tile spans, by how many products sit in the last row (keys = count % columns)
+const CTA_SPAN_SM = ["sm:col-span-2", "sm:col-span-1"];
+const CTA_SPAN_LG = ["lg:col-span-3", "lg:col-span-2", "lg:col-span-1"];
+
 export default async function HomePage() {
   const products = await getCatalog();
-  // Show the photo area on every card as soon as at least one product has a photo
-  const showPhotos = products.some((p) => isHostedProductImage(p.image_url));
+  // Show the photo area on every card as soon as at least one product has photos
+  const showPhotos = products.some((p) => productPhotos(p).length > 0);
 
   return (
     <>
@@ -132,35 +136,23 @@ export default async function HomePage() {
                   {products.length} ways to put it on paper
                 </h2>
               </div>
-              <p className="max-w-sm text-graphite">
-                Don&apos;t see your item? We take custom jobs too. Message us with what you have in mind.
-              </p>
             </div>
 
             <ul className="mt-12 grid gap-px overflow-hidden rounded-lg border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
               {products.map((p) => (
                 <li key={p.id} className="group relative flex flex-col bg-white transition-colors hover:bg-ink hover:text-paper">
-                  {showPhotos && (
-                    <div className="relative aspect-[4/3] overflow-hidden bg-paper-2">
-                      {isHostedProductImage(p.image_url) ? (
-                        <Image
-                          src={p.image_url}
-                          alt={p.name}
-                          fill
-                          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                          className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                        />
-                      ) : (
-                        // No photo yet: a quiet branded tile so the grid stays even
-                        <div
-                          aria-hidden
-                          className="grid size-full place-items-center text-ink/10 transition-colors group-hover:bg-ink-2 group-hover:text-paper/10"
-                        >
-                          <LogoMark className="size-16" />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {showPhotos &&
+                    (productPhotos(p).length > 0 ? (
+                      <ProductGallery images={productPhotos(p)} name={p.name} />
+                    ) : (
+                      // No photos yet: a quiet branded tile so the grid stays even
+                      <div
+                        aria-hidden
+                        className="grid aspect-[4/3] place-items-center bg-paper-2 text-ink/10 transition-colors group-hover:bg-ink-2 group-hover:text-paper/10"
+                      >
+                        <LogoMark className="size-16" />
+                      </div>
+                    ))}
                   <div className="flex flex-1 flex-col p-6">
                   <div className="flex items-center justify-between font-mono text-[0.65rem] tracking-widest text-graphite uppercase group-hover:text-foil">
                     <span>{p.category}</span>
@@ -183,6 +175,25 @@ export default async function HomePage() {
                   </div>
                 </li>
               ))}
+              {/* Fills whatever is left of the last row, so the grid never ends in empty cells */}
+              <li className={`flex flex-col justify-between gap-8 bg-ink p-6 text-paper sm:p-8 ${CTA_SPAN_SM[products.length % 2]} ${CTA_SPAN_LG[products.length % 3]}`}>
+                <div>
+                  <p className="font-mono text-[0.65rem] tracking-widest text-foil uppercase">Custom jobs</p>
+                  <h3 className="mt-5 font-display text-3xl font-semibold uppercase">Something else in mind?</h3>
+                  <p className="mt-2 max-w-md text-sm leading-relaxed text-paper/70">
+                    We print more than what&apos;s listed here. Tell us what you need and we&apos;ll quote it.
+                  </p>
+                </div>
+                <a
+                  href={SHOP.messengerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 self-start rounded-md bg-foil px-4 py-2.5 text-sm font-medium text-ink hover:bg-foil-light"
+                >
+                  <MessageCircle className="size-4" aria-hidden />
+                  Message us
+                </a>
+              </li>
             </ul>
           </div>
         </section>
