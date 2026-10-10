@@ -1,8 +1,9 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { diffDays, monthEnd, monthStart, num, weekStart } from "@/lib/format";
-import { followUpFlag, isOpenQuote, type FollowUpFlag } from "@/lib/labels";
+import { followUpFlag, isBookedOrder, isOpenQuote, type FollowUpFlag } from "@/lib/labels";
 import type {
+  PaymentChannel,
   ReferralItem,
   CommissionEarning,
   CommissionPayout,
@@ -14,7 +15,12 @@ import type {
   Settings,
 } from "@/types/db";
 
-const DEFAULT_SETTINGS: Settings = { default_commission_rate: 0.05, quote_validity_days: 14, due_soon_days: 3 };
+const DEFAULT_SETTINGS: Settings = {
+  default_commission_rate: 0.05,
+  quote_validity_days: 14,
+  due_soon_days: 3,
+  online_ordering_enabled: false,
+};
 
 /** Numeric columns come back as strings from PostgREST; coerce the ones we do math on. */
 function normOrder(o: OrderSummary): OrderSummary {
@@ -54,6 +60,7 @@ export async function getSettings(): Promise<Settings> {
     default_commission_rate: num(data.default_commission_rate),
     quote_validity_days: num(data.quote_validity_days),
     due_soon_days: num(data.due_soon_days),
+    online_ordering_enabled: Boolean(data.online_ordering_enabled),
   };
 }
 
@@ -140,6 +147,27 @@ export async function getReferralItems(referralId: string): Promise<ReferralItem
   return ((data ?? []) as ReferralItem[]).map((i) => ({ ...i, qty: num(i.qty) }));
 }
 
+export async function countPendingProofs(): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase.from("payment_proofs").select("id", { count: "exact", head: true }).eq("status", "pending");
+  return count ?? 0;
+}
+
+export async function countOrdersToPrice(): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("order_status", "pending_review");
+  return count ?? 0;
+}
+
+export async function getPaymentChannels(opts: { activeOnly?: boolean } = {}): Promise<PaymentChannel[]> {
+  const supabase = await createClient();
+  let q = supabase.from("payment_channels").select("*").order("sort_order").order("created_at");
+  if (opts.activeOnly) q = q.eq("active", true);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PaymentChannel[];
+}
+
 export async function countPendingReferrals(): Promise<number> {
   const supabase = await createClient();
   const { count } = await supabase.from("referrals").select("id", { count: "exact", head: true }).eq("status", "submitted");
@@ -193,9 +221,9 @@ export async function getPayouts(filter: { agentId?: string } = {}): Promise<(Co
 
 export type OrderTotals = { count: number; booked: number; collected: number; balance: number };
 
-/** Cancelled orders are excluded from all totals. */
+/** Totals count only booked orders: cancelled ones and unpriced/unpaid website orders are left out. */
 export function sumOrders(orders: OrderSummary[]): OrderTotals {
-  return orders.filter((o) => o.order_status !== "cancelled").reduce(
+  return orders.filter((o) => isBookedOrder(o.order_status)).reduce(
     (t, o) => ({
       count: t.count + 1,
       booked: t.booked + o.total_amount,

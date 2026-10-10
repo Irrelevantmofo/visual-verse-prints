@@ -2,12 +2,12 @@ import Link from "next/link";
 import { Badge, ButtonLink, Card, EmptyState, PageHeader, Table, Td, Th, inputStyles, buttonStyles, cx } from "@/components/ui";
 import { Tabs } from "@/components/staff/tabs";
 import { fmtDateShort, fmtMonth, monthEnd, monthStart, php, todayISO } from "@/lib/format";
-import { ORDER_STATUS, PAYMENT_STATUS } from "@/lib/labels";
+import { isBookedOrder, ORDER_STATUS, PAYMENT_STATUS } from "@/lib/labels";
 import { getAgents, getOrders, sumOrders } from "@/lib/queries";
 
 export const metadata = { title: "Orders" };
 
-const FILTERS = ["all", "in_progress", "ready", "delivered", "unpaid", "cancelled"] as const;
+const FILTERS = ["all", "pending_review", "awaiting_payment", "in_progress", "ready", "delivered", "unpaid", "cancelled"] as const;
 type Filter = (typeof FILTERS)[number];
 
 export default async function OrdersPage({ searchParams }: PageProps<"/admin/orders">) {
@@ -18,9 +18,15 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
   const from = monthStart(`${month}-01`);
   const to = monthEnd(from);
 
-  const [all, agents] = await Promise.all([getOrders({ from, to, agentId }), getAgents()]);
+  // Website orders waiting on pricing or payment are shown whatever month they were placed in, so none get missed
+  const [monthOrders, waiting, agents] = await Promise.all([
+    getOrders({ from, to, agentId }),
+    Promise.all([getOrders({ status: "pending_review", agentId }), getOrders({ status: "awaiting_payment", agentId })]).then((r) => r.flat()),
+    getAgents(),
+  ]);
+  const all = [...monthOrders, ...waiting.filter((w) => !monthOrders.some((m) => m.id === w.id))];
   const match = (f: Filter) => (o: (typeof all)[number]) =>
-    f === "all" ? true : f === "unpaid" ? o.balance > 0 && o.order_status !== "cancelled" : o.order_status === f;
+    f === "all" ? true : f === "unpaid" ? o.balance > 0 && isBookedOrder(o.order_status) : o.order_status === f;
   const orders = all.filter(match(filter));
   const totals = sumOrders(orders);
 
@@ -67,6 +73,8 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
         active={filter}
         items={[
           { key: "all", label: "All", href: qs({ status: undefined }), count: all.length },
+          { key: "pending_review", label: "Needs pricing", href: qs({ status: "pending_review" }), count: all.filter(match("pending_review")).length },
+          { key: "awaiting_payment", label: "Awaiting payment", href: qs({ status: "awaiting_payment" }), count: all.filter(match("awaiting_payment")).length },
           { key: "in_progress", label: "In progress", href: qs({ status: "in_progress" }), count: all.filter(match("in_progress")).length },
           { key: "ready", label: "Ready", href: qs({ status: "ready" }), count: all.filter(match("ready")).length },
           { key: "delivered", label: "Delivered", href: qs({ status: "delivered" }), count: all.filter(match("delivered")).length },
@@ -103,7 +111,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
                     </Link>
                     <p className="font-mono text-[0.68rem] text-graphite">#{o.order_no}</p>
                   </Td>
-                  <Td>{o.agent_name ?? <span className="text-graphite">Direct</span>}</Td>
+                  <Td>{o.agent_name ?? <span className="text-graphite">{o.source === "website" ? "Website" : "Direct"}</span>}</Td>
                   <Td className="max-w-[16rem] text-graphite">{o.items}</Td>
                   <Td className="text-right font-mono">{php(o.total_amount)}</Td>
                   <Td className="text-right font-mono">{php(o.paid_amount)}</Td>

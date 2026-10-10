@@ -5,6 +5,7 @@ import { PressSheet, RegistrationStrip } from "@/components/marketing/press-shee
 import { ProductGallery } from "@/components/marketing/product-gallery";
 import { SOCIALS } from "@/components/marketing/social-links";
 import { getCatalog, SHOP } from "@/lib/catalog";
+import { isOrderingEnabled } from "@/lib/ordering";
 import { phpShort } from "@/lib/format";
 import { productPhotos } from "@/lib/images";
 
@@ -34,7 +35,7 @@ const CTA_SPAN_SM = ["sm:col-span-2", "sm:col-span-1"];
 const CTA_SPAN_LG = ["lg:col-span-3", "lg:col-span-2", "lg:col-span-1"];
 
 export default async function HomePage() {
-  const products = await getCatalog();
+  const [products, orderingEnabled] = await Promise.all([getCatalog(), isOrderingEnabled()]);
   // Show the photo area on every card as soon as at least one product has photos
   const showPhotos = products.some((p) => productPhotos(p).length > 0);
 
@@ -173,6 +174,14 @@ export default async function HomePage() {
                       <span className="text-foil-dark group-hover:text-foil-light">Priced per job. Ask for a quote</span>
                     )}
                   </p>
+                  {orderingEnabled && (
+                    <Link
+                      href={`/order?product=${p.slug}`}
+                      className="mt-4 inline-flex items-center gap-1.5 self-start rounded-md border border-ink/20 px-3 py-1.5 text-sm font-medium group-hover:border-foil group-hover:text-foil-light"
+                    >
+                      Order {p.name.toLowerCase()} <ArrowRight className="size-4" aria-hidden />
+                    </Link>
+                  )}
                   </div>
                 </li>
               ))}
@@ -222,23 +231,45 @@ export default async function HomePage() {
         <section className="bg-paper">
           <div className="mx-auto max-w-7xl px-4 py-16 sm:px-8">
             <div className="crop-marks flex flex-col gap-6 px-8 py-10 text-graphite sm:flex-row sm:items-center sm:justify-between sm:px-12">
-              <div className="text-ink">
-                <p className="font-mono text-xs tracking-[0.3em] text-foil-dark uppercase">Coming soon</p>
-                <h2 className="mt-2 font-display text-3xl font-bold uppercase sm:text-4xl">Order and pay online</h2>
-                <p className="mt-2 max-w-xl text-graphite">
-                  Soon you&apos;ll be able to choose a product, upload your artwork and pay right here. Until then, send
-                  us a message and we&apos;ll handle your order.
-                </p>
-              </div>
-              <a
-                href={SHOP.messengerUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex shrink-0 items-center gap-2 self-start rounded-md bg-ink px-5 py-3 font-medium text-paper hover:bg-ink-3 sm:self-auto"
-              >
-                <MessageCircle className="size-4" aria-hidden />
-                Order through Messenger
-              </a>
+              {orderingEnabled ? (
+                <>
+                  <div className="text-ink">
+                    <p className="font-mono text-xs tracking-[0.3em] text-foil-dark uppercase">Order online</p>
+                    <h2 className="mt-2 font-display text-3xl font-bold uppercase sm:text-4xl">Order here, pay by QR</h2>
+                    <p className="mt-2 max-w-xl text-graphite">
+                      Send your order from this site. We confirm the price, you pay with your banking app and upload the receipt, and you
+                      can follow the order from your phone.
+                    </p>
+                  </div>
+                  <Link
+                    href="/order"
+                    className="inline-flex shrink-0 items-center gap-2 self-start rounded-md bg-ink px-5 py-3 font-medium text-paper hover:bg-ink-3 sm:self-auto"
+                  >
+                    Start an order
+                    <ArrowRight className="size-4" aria-hidden />
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <div className="text-ink">
+                    <p className="font-mono text-xs tracking-[0.3em] text-foil-dark uppercase">Coming soon</p>
+                    <h2 className="mt-2 font-display text-3xl font-bold uppercase sm:text-4xl">Order and pay online</h2>
+                    <p className="mt-2 max-w-xl text-graphite">
+                      Soon you&apos;ll be able to choose a product, upload your artwork and pay right here. Until then, send
+                      us a message and we&apos;ll handle your order.
+                    </p>
+                  </div>
+                  <a
+                    href={SHOP.messengerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex shrink-0 items-center gap-2 self-start rounded-md bg-ink px-5 py-3 font-medium text-paper hover:bg-ink-3 sm:self-auto"
+                  >
+                    <MessageCircle className="size-4" aria-hidden />
+                    Order through Messenger
+                  </a>
+                </>
+              )}
             </div>
           </div>
         </section>

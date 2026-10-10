@@ -4,7 +4,7 @@ import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatTile }
 import { Leaderboard } from "@/components/leaderboard";
 import { ReferralProgress } from "@/components/referral-progress";
 import { fmtDateShort, fmtMonth, monthStart, php, todayISO } from "@/lib/format";
-import { REFERRAL_STAGE } from "@/lib/labels";
+import { isBookedOrder, REFERRAL_STAGE } from "@/lib/labels";
 import { requireRole } from "@/lib/auth";
 import { getCommissionEarnings, getLeaderboard, getOrders, getPayouts, getReferrals } from "@/lib/queries";
 
@@ -27,7 +27,7 @@ export default async function AgentOverview() {
   const earnedAll = earnings.reduce((s, e) => s + e.commission, 0);
   const paidOut = payouts.reduce((s, p) => s + p.amount, 0);
   const pending = orders.reduce((s, o) => s + o.commission_pending, 0);
-  const bookedMonth = orders.filter((o) => o.order_date >= from && o.order_status !== "cancelled").reduce((s, o) => s + o.total_amount, 0);
+  const bookedMonth = orders.filter((o) => o.order_date >= from && isBookedOrder(o.order_status)).reduce((s, o) => s + o.total_amount, 0);
 
   const mine = board.find((r) => r.agent_id === me.id);
   const ahead = mine ? board.filter((r) => r.rank < mine.rank).at(-1) : undefined;

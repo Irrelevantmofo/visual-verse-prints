@@ -19,6 +19,7 @@ import {
   Settings,
   Trophy,
   Send,
+  ReceiptText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -34,6 +35,7 @@ const ICONS = {
   settings: Settings,
   leaderboard: Trophy,
   submit: Send,
+  payments: ReceiptText,
 } satisfies Record<string, LucideIcon>;
 import { Wordmark } from "@/components/logo";
 import { cx } from "@/components/ui";

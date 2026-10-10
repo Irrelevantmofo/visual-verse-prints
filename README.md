@@ -29,6 +29,22 @@ Customer website plus admin and agent dashboards for Visual Verse Prints (Calooc
 7. The **leaderboard** shows every agent's commission for the period. It uses a `security definer` function
    that returns totals only, so agents never see each other's clients.
 
+### Online ordering (foundation, off by default)
+
+Switch it on in **Admin → Settings → Accept orders on the website**, after adding at least one payment channel there.
+
+1. A customer fills in the order form at `/order` (no account). They get a private order page at `/order/<code>`.
+   That link is their session: it shows the order, and on a computer it shows a QR to open the same page on a phone.
+2. The order arrives as **Needs pricing**. The admin sets line prices (Edit order) and clicks **Confirm price**.
+3. The customer's page then shows the total, the shop's payment channels (QR, account name and number) and a
+   receipt upload. Receipts go to private storage.
+4. The admin checks each receipt under **Payments to verify** and verifies it (which records the payment and moves
+   the order into production) or rejects it with a note the customer sees.
+
+Customer actions run on the server with the secret key after checking the order code; nothing is opened to anonymous
+database access. Website orders are left out of sales totals until they reach production. Not built yet, pending the
+client's answers: artwork uploads, delivery options, agent order links, instant checkout for fixed-price items.
+
 ## Setup
 
 1. **Env vars:** copy `.env.example` to `.env.local` and fill in the values from Supabase → Project Settings → API.

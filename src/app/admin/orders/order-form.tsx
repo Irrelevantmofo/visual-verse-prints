@@ -4,9 +4,9 @@ import { useActionState, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { saveOrder } from "@/lib/actions/admin";
 import { buttonStyles, cx, Field, FormMessage, inputStyles } from "@/components/ui";
-import { DELIVERY_STATUS, ORDER_STATUS, PAYMENT_METHOD } from "@/lib/labels";
+import { DELIVERY_STATUS, ORDER_STATUS, PAYMENT_METHOD, PRE_PRODUCTION } from "@/lib/labels";
 import { pct, php } from "@/lib/format";
-import type { Order, Product } from "@/types/db";
+import type { Order, OrderStatus, Product } from "@/types/db";
 
 type Option = { id: string; label: string; agentId?: string; clientName?: string; clientContact?: string };
 type Item = {
@@ -323,11 +323,13 @@ export function OrderForm({
         </Field>
         <Field label="Order status" htmlFor="order_status">
           <select id="order_status" name="order_status" defaultValue={v.order_status ?? "in_progress"} className={inputStyles}>
-            {Object.entries(ORDER_STATUS).map(([k, m]) => (
-              <option key={k} value={k}>
-                {m.label}
-              </option>
-            ))}
+            {Object.entries(ORDER_STATUS)
+              .filter(([k]) => order?.source === "website" || !PRE_PRODUCTION.includes(k as OrderStatus))
+              .map(([k, m]) => (
+                <option key={k} value={k}>
+                  {m.label}
+                </option>
+              ))}
           </select>
         </Field>
         <Field label="Delivery status" htmlFor="delivery_status">

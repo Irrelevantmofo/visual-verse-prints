@@ -1,4 +1,5 @@
 import type {
+  ProofStatus,
   DeliveryStatus,
   OrderStatus,
   PaymentMethod,
@@ -13,6 +14,8 @@ export type Tone = "neutral" | "gold" | "green" | "blue" | "amber" | "red";
 type Meta = { label: string; tone: Tone };
 
 export const ORDER_STATUS: Record<OrderStatus, Meta> = {
+  pending_review: { label: "Needs pricing", tone: "gold" },
+  awaiting_payment: { label: "Awaiting payment", tone: "amber" },
   in_progress: { label: "In Progress", tone: "blue" },
   ready: { label: "Ready for Delivery / Pick-up", tone: "amber" },
   delivered: { label: "Shipped / Delivered", tone: "green" },
@@ -100,3 +103,31 @@ export function followUpFlag(
   if (days <= dueSoonDays) return "due_soon";
   return "active";
 }
+
+/** Website orders that the shop hasn't priced, or the customer hasn't paid for, aren't sales yet. */
+export const PRE_PRODUCTION: readonly OrderStatus[] = ["pending_review", "awaiting_payment"];
+
+/** Counts toward sales totals: in production or beyond, and not cancelled. */
+export function isBookedOrder(status: OrderStatus) {
+  return status !== "cancelled" && !PRE_PRODUCTION.includes(status);
+}
+
+export const PROOF_STATUS: Record<ProofStatus, Meta> = {
+  pending: { label: "Being checked", tone: "gold" },
+  approved: { label: "Verified", tone: "green" },
+  rejected: { label: "Not accepted", tone: "red" },
+};
+
+/** What a customer sees on their order page. */
+export const CUSTOMER_ORDER_STATUS: Record<OrderStatus, { label: string; detail: string; tone: Tone }> = {
+  pending_review: { label: "Order received", detail: "We're checking your order and will confirm the price here.", tone: "gold" },
+  awaiting_payment: {
+    label: "Ready for payment",
+    detail: "Your price is confirmed. Pay using the details below, then upload your receipt.",
+    tone: "amber",
+  },
+  in_progress: { label: "In production", detail: "We're printing your order.", tone: "blue" },
+  ready: { label: "Ready", detail: "Your order is ready for pick-up or delivery.", tone: "green" },
+  delivered: { label: "Completed", detail: "Your order has been released. Thank you!", tone: "green" },
+  cancelled: { label: "Cancelled", detail: "This order was cancelled. Message us if this is a mistake.", tone: "red" },
+};

@@ -5,10 +5,10 @@ import { useId, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from "lucide-react";
 import { cx } from "@/components/ui";
 import { isHostedProductImage, MAX_PRODUCT_IMAGES, PRODUCT_BUCKET } from "@/lib/images";
+import { IMAGE_ACCEPT, resizeImage } from "@/lib/resize-image";
 import { createClient } from "@/lib/supabase/client";
 
-const MAX_EDGE = 1600; // px on the longest side: sharp on the site, small to download
-const ACCEPT = "image/jpeg,image/png,image/webp,image/avif";
+const ACCEPT = IMAGE_ACCEPT;
 
 function hostOf(link: string) {
   try {
@@ -16,23 +16,6 @@ function hostOf(link: string) {
   } catch {
     return "pasted text";
   }
-}
-
-/** Shrink a photo in the browser so phone pictures (5–10 MB) upload as a few hundred KB. */
-async function resize(file: File): Promise<{ blob: Blob; ext: string }> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const toBlob = (type: string) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.85));
-  const webp = await toBlob("image/webp");
-  if (webp && webp.type === "image/webp") return { blob: webp, ext: "webp" };
-  const jpeg = await toBlob("image/jpeg");
-  if (!jpeg) throw new Error("This image couldn't be processed.");
-  return { blob: jpeg, ext: "jpg" };
 }
 
 /**
@@ -76,7 +59,7 @@ export function ImageGalleryUpload({
     // One at a time keeps the order the admin picked and is gentle on slow connections
     for (const file of files) {
       try {
-        const { blob, ext } = await resize(file);
+        const { blob, ext } = await resizeImage(file);
         const path = `products/${crypto.randomUUID()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from(PRODUCT_BUCKET)

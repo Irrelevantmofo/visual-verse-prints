@@ -4,7 +4,19 @@ import { useActionState } from "react";
 import { saveSettings } from "@/lib/actions/admin";
 import { buttonStyles, cx, Field, FormMessage, inputStyles } from "@/components/ui";
 
-export function SettingsForm({ ratePct, validityDays, dueSoonDays }: { ratePct: number; validityDays: number; dueSoonDays: number }) {
+export function SettingsForm({
+  ratePct,
+  validityDays,
+  dueSoonDays,
+  orderingEnabled,
+  activeChannels,
+}: {
+  ratePct: number;
+  validityDays: number;
+  dueSoonDays: number;
+  orderingEnabled: boolean;
+  activeChannels: number;
+}) {
   const [state, action, pending] = useActionState(saveSettings, null);
   const fe = state?.fieldErrors ?? {};
   return (
@@ -43,6 +55,28 @@ export function SettingsForm({ ratePct, validityDays, dueSoonDays }: { ratePct: 
       >
         <input id="due_soon_days" name="due_soon_days" type="number" min="0" defaultValue={dueSoonDays} className={cx(inputStyles, "w-32 font-mono")} />
       </Field>
+      <div className="rounded-md border border-rule bg-paper p-4">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            name="online_ordering_enabled"
+            defaultChecked={orderingEnabled}
+            className="mt-1 size-4 accent-[var(--color-foil-dark)]"
+          />
+          <span>
+            <span className="block text-sm font-medium">Accept orders on the website</span>
+            <span className="block text-xs text-graphite">
+              Shows an Order button on the site. Customers send an order, you confirm the price, then they pay by QR and upload a receipt for you to
+              verify.
+            </span>
+          </span>
+        </label>
+        {activeChannels === 0 && (
+          <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            No payment channel is set up yet. Add at least one (with its QR) so customers know where to pay.
+          </p>
+        )}
+      </div>
       <FormMessage state={state} />
       <button disabled={pending} className={buttonStyles.primary}>
         {pending ? "Saving…" : "Save settings"}

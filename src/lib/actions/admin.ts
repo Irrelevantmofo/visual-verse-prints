@@ -182,7 +182,7 @@ const orderSchema = z.object({
   quotation_id: optionalId,
   client_name: z.string().trim().min(1, "Enter the client's name."),
   client_contact: optionalText,
-  order_status: z.enum(["in_progress", "ready", "delivered", "cancelled"]),
+  order_status: z.enum(["pending_review", "awaiting_payment", "in_progress", "ready", "delivered", "cancelled"]),
   delivery_status: z.enum(["in_progress", "ready", "delivered"]),
   notes: optionalText,
   items: z
@@ -261,14 +261,19 @@ export async function deleteOrder(formData: FormData) {
   await requireRole("admin");
   const id = z.uuid().parse(formData.get("id"));
   const supabase = await createClient();
-  await supabase.from("orders").delete().eq("id", id);
+  // Customer receipts live in private storage; remove them with the order
+  const { data: proofs } = await supabase.from("payment_proofs").select("storage_path").eq("order_id", id);
+  const { error } = await supabase.from("orders").delete().eq("id", id);
+  if (!error && proofs?.length) {
+    await supabase.storage.from("payment-proofs").remove(proofs.map((p) => p.storage_path as string));
+  }
   revalidateStaff();
   redirect("/admin/orders");
 }
 
 const statusSchema = z.object({
   id: z.uuid(),
-  order_status: z.enum(["in_progress", "ready", "delivered", "cancelled"]),
+  order_status: z.enum(["pending_review", "awaiting_payment", "in_progress", "ready", "delivered", "cancelled"]),
   delivery_status: z.enum(["in_progress", "ready", "delivered"]),
 });
 
@@ -525,6 +530,10 @@ const settingsSchema = z.object({
     .transform((v) => v / 100),
   quote_validity_days: z.coerce.number().int().min(1, "At least 1 day."),
   due_soon_days: z.coerce.number().int().min(0),
+  online_ordering_enabled: z
+    .string()
+    .optional()
+    .transform((v) => v === "on" || v === "true"),
 });
 
 export async function saveSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -535,5 +544,8 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   const { error } = await supabase.from("settings").update(parsed.data).eq("id", true);
   if (error) return { error: error.message };
   revalidateStaff();
+  // The landing page and order form read the ordering switch
+  revalidatePath("/");
+  revalidatePath("/order");
   return { message: "Settings saved." };
 }

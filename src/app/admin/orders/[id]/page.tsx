@@ -7,11 +7,16 @@ import { deleteOrder, deletePayment } from "@/lib/actions/admin";
 import { fmtDate, num, pct, php, todayISO } from "@/lib/format";
 import { DELIVERY_STATUS, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "@/lib/labels";
 import { getOrder } from "@/lib/queries";
+import { orderUrl } from "@/lib/ordering";
+import { CopyButton } from "@/components/order/copy-button";
 import { createClient } from "@/lib/supabase/server";
 import type { OrderItem, Payment } from "@/types/db";
-import { PaymentForm, StatusForm } from "./order-actions";
+import { ConfirmPriceForm, PaymentForm, StatusForm } from "./order-actions";
 
 export const metadata = { title: "Order" };
+
+/** Lines the shop hasn't priced yet. */
+const countUnpriced = (rows: unknown[] | null) => ((rows ?? []) as OrderItem[]).filter((i) => num(i.amount) <= 0).length;
 
 export default async function OrderDetailPage({ params }: PageProps<"/admin/orders/[id]">) {
   const { id } = await params;
@@ -19,10 +24,16 @@ export default async function OrderDetailPage({ params }: PageProps<"/admin/orde
   if (!order) notFound();
 
   const supabase = await createClient();
-  const [{ data: itemsData }, { data: paymentsData }] = await Promise.all([
+  const [{ data: itemsData }, { data: paymentsData }, { data: web }, { count: pendingProofs }] = await Promise.all([
     supabase.from("order_items").select("*").eq("order_id", id).order("position"),
     supabase.from("payments").select("*").eq("order_id", id).order("paid_on", { ascending: false }),
+    // order_summary predates these columns, so read them from the table
+    supabase.from("orders").select("public_token, customer_notes").eq("id", id).maybeSingle(),
+    supabase.from("payment_proofs").select("id", { count: "exact", head: true }).eq("order_id", id).eq("status", "pending"),
   ]);
+  const customerLink = web?.public_token ? await orderUrl(web.public_token as string) : null;
+  const isWebsiteOrder = order.source === "website";
+  const unpriced = countUnpriced(itemsData);
   const items = (itemsData ?? []) as OrderItem[];
   const payments = (paymentsData ?? []) as Payment[];
 
@@ -40,6 +51,64 @@ export default async function OrderDetailPage({ params }: PageProps<"/admin/orde
           </ButtonLink>
         }
       />
+
+      {isWebsiteOrder && (
+        <Card className="mb-6 border-foil/60">
+          <CardHeader
+            title="Website order"
+            description={
+              order.order_status === "pending_review"
+                ? "The customer is waiting for a price."
+                : order.order_status === "awaiting_payment"
+                  ? "Price confirmed. Waiting for the customer to pay and upload a receipt."
+                  : "Placed by the customer on the website."
+            }
+            action={
+              (pendingProofs ?? 0) > 0 ? (
+                <ButtonLink href="/admin/payments" variant="gold">
+                  {pendingProofs} {pendingProofs === 1 ? "receipt" : "receipts"} to verify
+                </ButtonLink>
+              ) : null
+            }
+          />
+          <div className="space-y-4 p-5 text-sm">
+            {web?.customer_notes && (
+              <div>
+                <p className="text-graphite">Customer&apos;s note</p>
+                <p className="mt-0.5 whitespace-pre-line">{web.customer_notes as string}</p>
+              </div>
+            )}
+            {order.order_status === "pending_review" && (
+              <div className="rounded-md bg-paper p-4">
+                <p className="font-medium">To do: price this order</p>
+                <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-graphite">
+                  <li>
+                    Open{" "}
+                    <Link href={`/admin/orders/${id}/edit`} className="underline">
+                      Edit order
+                    </Link>{" "}
+                    and enter each line&apos;s price{unpriced > 0 ? ` (${unpriced} still at ₱0)` : ""}.
+                  </li>
+                  <li>Confirm below. The customer&apos;s order page then shows the total and how to pay.</li>
+                </ol>
+                <div className="mt-3">
+                  <ConfirmPriceForm id={id} total={order.total_amount} />
+                </div>
+              </div>
+            )}
+            {customerLink && (
+              <div>
+                <p className="text-graphite">Customer&apos;s order link</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <code className="min-w-0 flex-1 rounded-md bg-paper-2 px-3 py-2 font-mono text-xs break-all">{customerLink}</code>
+                  <CopyButton value={customerLink} label="Copy link" />
+                </div>
+                <p className="mt-1 text-xs text-graphite">Send this to the customer if they lose it. Anyone with the link can view the order and upload receipts.</p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Total" value={php(order.total_amount)} emphasis />
@@ -179,7 +248,7 @@ export default async function OrderDetailPage({ params }: PageProps<"/admin/orde
           <Card className="h-fit">
             <CardHeader title="Production" description="Agents see this progress on their referral." />
             <div className="p-5">
-              <StatusForm id={id} orderStatus={order.order_status} deliveryStatus={order.delivery_status} />
+              <StatusForm id={id} orderStatus={order.order_status} deliveryStatus={order.delivery_status} isWebsiteOrder={isWebsiteOrder} />
             </div>
           </Card>
           <form action={deleteOrder}>

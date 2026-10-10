@@ -4,7 +4,9 @@
 export type UserRole = "admin" | "agent";
 export type ReferralStatus = "submitted" | "approved" | "rejected";
 export type QuoteStatus = "pending" | "follow_up_scheduled" | "won" | "lost";
-export type OrderStatus = "in_progress" | "ready" | "delivered" | "cancelled";
+/** pending_review and awaiting_payment are the pre-production stages of a website order. */
+export type OrderStatus = "pending_review" | "awaiting_payment" | "in_progress" | "ready" | "delivered" | "cancelled";
+export type ProofStatus = "pending" | "approved" | "rejected";
 export type DeliveryStatus = "in_progress" | "ready" | "delivered";
 export type OrderSource = "referral" | "direct" | "website";
 export type PaymentMethod = "cash" | "gcash" | "maya" | "bank_transfer" | "card" | "other";
@@ -34,6 +36,8 @@ export type Settings = {
   default_commission_rate: number;
   quote_validity_days: number;
   due_soon_days: number;
+  /** Customers can place orders on the website (off until the shop is ready). */
+  online_ordering_enabled: boolean;
 };
 
 export type Product = {
@@ -129,6 +133,36 @@ export type Order = {
   order_status: OrderStatus;
   delivery_status: DeliveryStatus;
   notes: string | null;
+  /** Unguessable code in the customer's order link (website orders only). */
+  public_token: string | null;
+  /** What the customer wrote when ordering on the website. */
+  customer_notes: string | null;
+};
+
+export type PaymentChannel = {
+  id: string;
+  name: string;
+  method: PaymentMethod;
+  account_name: string | null;
+  account_number: string | null;
+  qr_url: string | null;
+  instructions: string | null;
+  active: boolean;
+  sort_order: number;
+};
+
+export type PaymentProof = {
+  id: string;
+  order_id: string;
+  channel_id: string | null;
+  storage_path: string;
+  claimed_amount: number | null;
+  reference: string | null;
+  status: ProofStatus;
+  review_note: string | null;
+  reviewed_at: string | null;
+  payment_id: string | null;
+  created_at: string;
 };
 
 export type OrderSummary = Order & {

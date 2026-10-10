@@ -4,6 +4,7 @@ import { DailySalesChart } from "@/components/charts/daily-sales-chart";
 import { Leaderboard } from "@/components/leaderboard";
 import { addDays, fmtDate, fmtDateShort, fmtMonth, isISODate, php, todayISO } from "@/lib/format";
 import { getAgents, getLeaderboard, getOrders, getQuotations, periodBounds, sumOrders } from "@/lib/queries";
+import { isBookedOrder } from "@/lib/labels";
 import type { OrderSummary, Profile, QuotationSummary } from "@/types/db";
 
 export const metadata = { title: "Performance" };
@@ -90,7 +91,7 @@ export default async function PerformancePage({ searchParams }: PageProps<"/admi
 
   const daily = [];
   for (let day = monthFrom; day <= asOf; day = addDays(day, 1)) {
-    const dayOrders = orders.filter((o) => o.order_date === day && o.order_status !== "cancelled");
+    const dayOrders = orders.filter((o) => o.order_date === day && isBookedOrder(o.order_status));
     daily.push({ date: day, label: fmtDate(day), booked: dayOrders.reduce((s, o) => s + o.total_amount, 0), orders: dayOrders.length });
   }
 

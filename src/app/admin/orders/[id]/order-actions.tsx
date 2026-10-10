@@ -2,22 +2,35 @@
 
 import { useActionState } from "react";
 import { addPayment, updateOrderStatus } from "@/lib/actions/admin";
+import { confirmOrderPrice } from "@/lib/actions/payments";
 import { buttonStyles, cx, Field, FormMessage, inputStyles } from "@/components/ui";
-import { DELIVERY_STATUS, ORDER_STATUS, PAYMENT_METHOD } from "@/lib/labels";
+import { DELIVERY_STATUS, ORDER_STATUS, PAYMENT_METHOD, PRE_PRODUCTION } from "@/lib/labels";
 import type { DeliveryStatus, OrderStatus } from "@/types/db";
 
-export function StatusForm({ id, orderStatus, deliveryStatus }: { id: string; orderStatus: OrderStatus; deliveryStatus: DeliveryStatus }) {
+export function StatusForm({
+  id,
+  orderStatus,
+  deliveryStatus,
+  isWebsiteOrder = false,
+}: {
+  id: string;
+  orderStatus: OrderStatus;
+  deliveryStatus: DeliveryStatus;
+  isWebsiteOrder?: boolean;
+}) {
   const [state, action, pending] = useActionState(updateOrderStatus, null);
   return (
     <form action={action} className="space-y-3">
       <input type="hidden" name="id" value={id} />
       <Field label="Order status" htmlFor="order_status">
         <select id="order_status" name="order_status" defaultValue={orderStatus} className={inputStyles}>
-          {Object.entries(ORDER_STATUS).map(([k, m]) => (
-            <option key={k} value={k}>
-              {m.label}
-            </option>
-          ))}
+          {Object.entries(ORDER_STATUS)
+            .filter(([k]) => isWebsiteOrder || !PRE_PRODUCTION.includes(k as OrderStatus))
+            .map(([k, m]) => (
+              <option key={k} value={k}>
+                {m.label}
+              </option>
+            ))}
         </select>
       </Field>
       <Field label="Delivery status" htmlFor="delivery_status">
@@ -77,6 +90,20 @@ export function PaymentForm({ orderId, balance, today }: { orderId: string; bala
           {pending ? "Recording…" : "Record payment"}
         </button>
       </div>
+    </form>
+  );
+}
+
+/** Website orders: the shop has set the prices, so let the customer pay. */
+export function ConfirmPriceForm({ id, total }: { id: string; total: number }) {
+  const [state, action, pending] = useActionState(confirmOrderPrice, null);
+  return (
+    <form action={action} className="space-y-3">
+      <input type="hidden" name="id" value={id} />
+      <FormMessage state={state} />
+      <button disabled={pending || total <= 0} className={buttonStyles.gold}>
+        {pending ? "Confirming…" : "Confirm price and request payment"}
+      </button>
     </form>
   );
 }
