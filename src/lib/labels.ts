@@ -1,4 +1,5 @@
 import type {
+  FulfilmentMethod,
   ProofStatus,
   DeliveryStatus,
   OrderStatus,
@@ -123,11 +124,17 @@ export const CUSTOMER_ORDER_STATUS: Record<OrderStatus, { label: string; detail:
   pending_review: { label: "Order received", detail: "We're checking your order and will confirm the price here.", tone: "gold" },
   awaiting_payment: {
     label: "Ready for payment",
-    detail: "Your price is confirmed. Pay using the details below, then upload your receipt.",
+    detail: "Your total is confirmed. Pay the full amount using the details below, then upload your receipt.",
     tone: "amber",
   },
   in_progress: { label: "In production", detail: "We're printing your order.", tone: "blue" },
   ready: { label: "Ready", detail: "Your order is ready for pick-up or delivery.", tone: "green" },
   delivered: { label: "Completed", detail: "Your order has been released. Thank you!", tone: "green" },
   cancelled: { label: "Cancelled", detail: "This order was cancelled. Message us if this is a mistake.", tone: "red" },
+};
+
+export const FULFILMENT: Record<FulfilmentMethod, { label: string; short: string }> = {
+  pickup: { label: "Pick up at the shop", short: "Pick-up" },
+  lalamove: { label: "Lalamove (you book the rider)", short: "Lalamove" },
+  courier: { label: "Ship by courier (J&T or LBC)", short: "Courier" },
 };

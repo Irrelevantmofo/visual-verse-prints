@@ -90,11 +90,11 @@ export function ChannelForm({ channel, nextSort }: { channel?: PaymentChannel; n
   return (
     <form action={action} className="grid gap-3 sm:grid-cols-2">
       {channel && <input type="hidden" name="id" value={channel.id} />}
-      <Field label="Name" htmlFor={`ch-name-${k}`} error={fe.name} hint="What customers see, e.g. GCash or BPI.">
+      <Field label="Name" htmlFor={`ch-name-${k}`} error={fe.name} hint="What customers see, e.g. BPI.">
         <input id={`ch-name-${k}`} name="name" required defaultValue={channel?.name} className={inputStyles} />
       </Field>
       <Field label="Type" htmlFor={`ch-method-${k}`} hint="Recorded on payments verified through this channel.">
-        <select id={`ch-method-${k}`} name="method" defaultValue={channel?.method ?? "gcash"} className={inputStyles}>
+        <select id={`ch-method-${k}`} name="method" defaultValue={channel?.method ?? "bank_transfer"} className={inputStyles}>
           {Object.entries(PAYMENT_METHOD)
             .filter(([key]) => key !== "cash")
             .map(([key, label]) => (

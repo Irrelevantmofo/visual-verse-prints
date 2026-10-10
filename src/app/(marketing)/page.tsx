@@ -166,7 +166,7 @@ export default async function HomePage() {
                   <p className="mt-6 text-sm">
                     {p.starting_price != null ? (
                       <>
-                        <span className="text-graphite group-hover:text-paper/60">From </span>
+                        {!p.fixed_price && <span className="text-graphite group-hover:text-paper/60">From </span>}
                         <span className="font-mono font-medium tabular">{phpShort(p.starting_price)}</span>
                         {p.unit && <span className="text-graphite group-hover:text-paper/60"> {p.unit}</span>}
                       </>
@@ -224,6 +224,13 @@ export default async function HomePage() {
                 </li>
               ))}
             </ol>
+            <p className="mt-10 max-w-2xl border-l-2 border-foil pl-4 text-sm text-graphite">
+              <span className="font-medium text-ink">Lead time: {SHOP.leadTime}.</span> Need it sooner?{" "}
+              <a href={SHOP.facebookUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">
+                Message us on Facebook
+              </a>{" "}
+              to check if a rush is possible.
+            </p>
           </div>
         </section>
 

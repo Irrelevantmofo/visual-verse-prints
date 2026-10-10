@@ -29,21 +29,29 @@ Customer website plus admin and agent dashboards for Visual Verse Prints (Calooc
 7. The **leaderboard** shows every agent's commission for the period. It uses a `security definer` function
    that returns totals only, so agents never see each other's clients.
 
-### Online ordering (foundation, off by default)
+### Online ordering (off by default)
 
-Switch it on in **Admin → Settings → Accept orders on the website**, after adding at least one payment channel there.
+Switch it on in **Admin → Settings → Accept orders on the website**, after adding a payment channel there (BPI QR).
 
-1. A customer fills in the order form at `/order` (no account). They get a private order page at `/order/<code>`.
-   That link is their session: it shows the order, and on a computer it shows a QR to open the same page on a phone.
-2. The order arrives as **Needs pricing**. The admin sets line prices (Edit order) and clicks **Confirm price**.
-3. The customer's page then shows the total, the shop's payment channels (QR, account name and number) and a
-   receipt upload. Receipts go to private storage.
-4. The admin checks each receipt under **Payments to verify** and verifies it (which records the payment and moves
-   the order into production) or rejects it with a note the customer sees.
+1. A customer fills in the order form at `/order` (no account) and chooses pick-up, Lalamove (they book and pay the
+   rider themselves) or courier (J&T/LBC). They get a private order page at `/order/<code>`. That link is their
+   session; on a computer it shows a QR to open the same page on a phone.
+2. **Pricing.** Products marked **Fixed price** in the Catalog are charged price × quantity. If every line is a
+   fixed-price item ordered as listed, and the order isn't shipped by courier, it is payable immediately. Otherwise it
+   arrives as **Needs pricing**: the admin sets line prices (and the shipping fee for courier orders) in Edit order and
+   clicks **Confirm price**.
+3. The customer uploads design files on the order page (private storage; JPG, PNG, PDF, AI, EPS, PSD, ZIP).
+4. Once priced, the page shows the payment channel (QR, account name and number) and a receipt upload. **Full payment
+   is required**: the admin verifies receipts under **Payments to verify**, and the order moves into production when
+   the balance is cleared. A rejected receipt shows the admin's note to the customer.
+5. **Alerts.** Website orders with customer activity the admin hasn't opened yet (new order, design file, receipt) are
+   flagged on the dashboard and the Orders badge. There are no email or SMS alerts yet.
+6. **Agent links.** Each agent has a personal link (`/order?ref=<code>`, shown on their Overview). Orders placed through
+   it are credited to them and appear in My referrals.
 
 Customer actions run on the server with the secret key after checking the order code; nothing is opened to anonymous
-database access. Website orders are left out of sales totals until they reach production. Not built yet, pending the
-client's answers: artwork uploads, delivery options, agent order links, instant checkout for fixed-price items.
+database access. Website orders are left out of sales totals until they reach production. To try ordering locally
+without switching it on for customers, set `ORDERING_PREVIEW=1` in `.env.local`.
 
 ## Setup
 

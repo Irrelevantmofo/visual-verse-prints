@@ -3,7 +3,7 @@ import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatTile, 
 import { DateNav } from "@/components/staff/date-nav";
 import { addDays, fmtDate, fmtDateShort, isISODate, num, php, todayISO } from "@/lib/format";
 import { FOLLOW_UP_FLAG, ORDER_STATUS, PAYMENT_STATUS, type FollowUpFlag } from "@/lib/labels";
-import { byAgent, flagCounts, getAgents, getOrders, getQuotations, getReferrals, getSettings, openPipeline, sumOrders } from "@/lib/queries";
+import { byAgent, flagCounts, getAgents, getOrders, getQuotations, getReferrals, getSettings, openPipeline, sumOrders, getWebOrderAlerts } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Daily dashboard" };
@@ -14,13 +14,14 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
   const date = isISODate(dateParam) ? dateParam : today;
 
   const supabase = await createClient();
-  const [settings, agents, orders, quotes, pendingReferrals, paymentsRes] = await Promise.all([
+  const [settings, agents, orders, quotes, pendingReferrals, paymentsRes, webAlerts] = await Promise.all([
     getSettings(),
     getAgents(),
     getOrders({ from: date, to: date }),
     getQuotations({ from: addDays(date, -180), to: date }),
     getReferrals({ status: "submitted", limit: 6 }),
     supabase.from("payments").select("amount").eq("paid_on", date),
+    getWebOrderAlerts(),
   ]);
 
   const totals = sumOrders(orders);
@@ -175,6 +176,29 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
           )}
         </Card>
 
+        <div className="space-y-6">
+        {webAlerts.length > 0 && (
+          <Card className="border-foil/60">
+            <CardHeader title="Website orders" description="New orders, artwork or receipts from customers" />
+            <ul className="divide-y divide-rule/70">
+              {webAlerts.slice(0, 8).map((a) => (
+                <li key={a.id}>
+                  <Link href={`/admin/orders/${a.id}`} className="block px-5 py-3 hover:bg-paper">
+                    <p className="flex items-center justify-between gap-2 text-sm font-medium">
+                      <span className="truncate">
+                        #{a.order_no} · {a.client_name}
+                      </span>
+                      <Badge tone={a.isNew ? "gold" : "blue"}>{a.isNew ? "New order" : "New activity"}</Badge>
+                    </p>
+                    <p className="text-xs text-graphite">
+                      {ORDER_STATUS[a.order_status].label} · {fmtDateShort(a.customer_activity_at)}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
         <Card>
           <CardHeader title="Awaiting review" description="Referrals agents submitted" />
           {pendingReferrals.length === 0 ? (
@@ -194,6 +218,7 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
             </ul>
           )}
         </Card>
+        </div>
       </div>
     </>
   );

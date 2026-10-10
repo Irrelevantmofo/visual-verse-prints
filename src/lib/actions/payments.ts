@@ -95,11 +95,19 @@ export async function approveProof(_prev: ActionState, formData: FormData): Prom
     .eq("id", proof_id);
   if (proofError) return { error: proofError.message };
 
-  // The first verified payment moves a website order into production
-  await supabase.from("orders").update({ order_status: "in_progress" }).eq("id", proof.order_id).eq("order_status", "awaiting_payment");
+  // Website orders need full payment: production starts once the balance is cleared
+  const remaining = Number(order.balance) - amount;
+  if (remaining <= 0.001) {
+    await supabase.from("orders").update({ order_status: "in_progress" }).eq("id", proof.order_id).eq("order_status", "awaiting_payment");
+  }
 
   revalidateOrders();
-  return { message: "Payment verified and recorded." };
+  return {
+    message:
+      remaining <= 0.001
+        ? "Payment verified. The order is fully paid and now in production."
+        : `Payment verified. ₱${remaining.toFixed(2)} is still due before production starts.`,
+  };
 }
 
 const rejectSchema = z.object({

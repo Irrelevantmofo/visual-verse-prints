@@ -147,6 +147,42 @@ export async function getReferralItems(referralId: string): Promise<ReferralItem
   return ((data ?? []) as ReferralItem[]).map((i) => ({ ...i, qty: num(i.qty) }));
 }
 
+export type WebOrderAlert = {
+  id: string;
+  order_no: number;
+  client_name: string;
+  order_status: OrderSummary["order_status"];
+  customer_activity_at: string;
+  /** never opened by an admin */
+  isNew: boolean;
+};
+
+/**
+ * Open website orders with customer activity (new order, artwork or receipt) since an admin last opened them,
+ * newest first. This is the in-app "someone ordered or sent a file" alert.
+ */
+export async function getWebOrderAlerts(): Promise<WebOrderAlert[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("orders")
+    .select("id, order_no, client_name, order_status, customer_activity_at, admin_seen_at")
+    .eq("source", "website")
+    .not("customer_activity_at", "is", null)
+    .not("order_status", "in", "(delivered,cancelled)")
+    .order("customer_activity_at", { ascending: false })
+    .limit(200);
+  return (data ?? [])
+    .filter((o) => !o.admin_seen_at || o.admin_seen_at < o.customer_activity_at)
+    .map((o) => ({
+      id: o.id as string,
+      order_no: o.order_no as number,
+      client_name: o.client_name as string,
+      order_status: o.order_status as OrderSummary["order_status"],
+      customer_activity_at: o.customer_activity_at as string,
+      isNew: !o.admin_seen_at,
+    }));
+}
+
 export async function countPendingProofs(): Promise<number> {
   const supabase = await createClient();
   const { count } = await supabase.from("payment_proofs").select("id", { count: "exact", head: true }).eq("status", "pending");

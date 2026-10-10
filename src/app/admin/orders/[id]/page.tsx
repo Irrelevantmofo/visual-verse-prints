@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Trash2 } from "lucide-react";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatTile, Table, Td, Th, buttonStyles, cx } from "@/components/ui";
 import { ConfirmButton } from "@/components/confirm-button";
 import { deleteOrder, deletePayment } from "@/lib/actions/admin";
 import { fmtDate, num, pct, php, todayISO } from "@/lib/format";
-import { DELIVERY_STATUS, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from "@/lib/labels";
+import { DELIVERY_STATUS, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, FULFILMENT } from "@/lib/labels";
 import { getOrder } from "@/lib/queries";
 import { orderUrl } from "@/lib/ordering";
+import { formatBytes } from "@/lib/order-files";
 import { CopyButton } from "@/components/order/copy-button";
 import { createClient } from "@/lib/supabase/server";
-import type { OrderItem, Payment } from "@/types/db";
+import type { FulfilmentMethod, OrderFile, OrderItem, Payment } from "@/types/db";
 import { ConfirmPriceForm, PaymentForm, StatusForm } from "./order-actions";
 
 export const metadata = { title: "Order" };
@@ -28,9 +29,26 @@ export default async function OrderDetailPage({ params }: PageProps<"/admin/orde
     supabase.from("order_items").select("*").eq("order_id", id).order("position"),
     supabase.from("payments").select("*").eq("order_id", id).order("paid_on", { ascending: false }),
     // order_summary predates these columns, so read them from the table
-    supabase.from("orders").select("public_token, customer_notes").eq("id", id).maybeSingle(),
+    supabase
+      .from("orders")
+      .select("public_token, customer_notes, fulfilment, delivery_name, delivery_phone, delivery_address")
+      .eq("id", id)
+      .maybeSingle(),
     supabase.from("payment_proofs").select("id", { count: "exact", head: true }).eq("order_id", id).eq("status", "pending"),
   ]);
+  const { data: fileRows } = await supabase.from("order_files").select("*").eq("order_id", id).order("created_at");
+  const files = (fileRows ?? []) as OrderFile[];
+  // Customer files are private; these download links expire after an hour
+  const { data: fileLinks } = files.length
+    ? await supabase.storage.from("order-files").createSignedUrls(
+        files.map((f) => f.storage_path),
+        60 * 60,
+        { download: true },
+      )
+    : { data: [] };
+  const fulfilment = (web?.fulfilment as FulfilmentMethod | null) ?? null;
+  // Opening the order clears its "new activity" flag
+  if (order.source === "website") await supabase.from("orders").update({ admin_seen_at: new Date().toISOString() }).eq("id", id);
   const customerLink = web?.public_token ? await orderUrl(web.public_token as string) : null;
   const isWebsiteOrder = order.source === "website";
   const unpriced = countUnpriced(itemsData);
@@ -96,6 +114,47 @@ export default async function OrderDetailPage({ params }: PageProps<"/admin/orde
                 </div>
               </div>
             )}
+            {fulfilment && (
+              <div>
+                <p className="text-graphite">How they&apos;ll get it</p>
+                <p className="mt-0.5 font-medium">{FULFILMENT[fulfilment].label}</p>
+                {fulfilment === "courier" && (
+                  <p className="mt-1 whitespace-pre-line rounded-md bg-paper p-3">
+                    {web?.delivery_name as string}
+                    {web?.delivery_phone ? ` · ${web.delivery_phone as string}` : ""}
+                    {"\n"}
+                    {web?.delivery_address as string}
+                  </p>
+                )}
+                {fulfilment === "courier" && order.order_status === "pending_review" && (
+                  <p className="mt-1 text-xs text-graphite">Add the J&amp;T or LBC shipping fee as its own line in Edit order before confirming.</p>
+                )}
+                {fulfilment === "lalamove" && <p className="mt-1 text-xs text-graphite">The customer books and pays their own Lalamove rider.</p>}
+              </div>
+            )}
+            <div>
+              <p className="text-graphite">Design files from the customer</p>
+              {files.length === 0 ? (
+                <p className="mt-0.5">None uploaded yet.</p>
+              ) : (
+                <ul className="mt-1 divide-y divide-rule/70 rounded-md border border-rule bg-white">
+                  {files.map((f, i) => (
+                    <li key={f.id} className="flex items-center gap-3 px-3 py-2">
+                      <FileText className="size-4 shrink-0 text-graphite" aria-hidden />
+                      <span className="min-w-0 flex-1 truncate">{f.file_name}</span>
+                      <span className="shrink-0 text-xs text-graphite">
+                        {formatBytes(f.size_bytes)} · {fmtDate(f.created_at)}
+                      </span>
+                      {fileLinks?.[i]?.signedUrl && (
+                        <a href={fileLinks[i].signedUrl} className="shrink-0 font-medium underline">
+                          Download
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             {customerLink && (
               <div>
                 <p className="text-graphite">Customer&apos;s order link</p>

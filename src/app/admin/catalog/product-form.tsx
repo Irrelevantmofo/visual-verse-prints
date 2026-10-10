@@ -24,7 +24,7 @@ export function ProductForm({ product, nextSort }: { product?: Product; nextSort
         <input id={`cat-${k}`} name="category" required defaultValue={product?.category ?? "Print"} className={inputStyles} />
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="From price (₱)" htmlFor={`price-${k}`} hint="Blank = quote">
+        <Field label="Price (₱)" htmlFor={`price-${k}`} hint="Blank = quote" error={fe.starting_price}>
           <input
             id={`price-${k}`}
             name="starting_price"
@@ -83,6 +83,24 @@ export function ProductForm({ product, nextSort }: { product?: Product; nextSort
           <input type="checkbox" name="active" defaultChecked={product?.active ?? true} className="size-4 accent-[var(--color-foil-dark)]" />
           Show on website
         </label>
+      </div>
+      <div className="rounded-md border border-rule bg-white p-3 sm:col-span-2">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            name="fixed_price"
+            defaultChecked={product?.fixed_price ?? false}
+            className="mt-1 size-4 accent-[var(--color-foil-dark)]"
+          />
+          <span>
+            <span className="block text-sm font-medium">Fixed price: customers can order and pay right away</span>
+            <span className="block text-xs text-graphite">
+              The price above is charged per unit, as listed. Leave this off for items you quote per job. A customer who asks for a different size
+              still waits for your price.
+            </span>
+          </span>
+        </label>
+        {fe.fixed_price && <p className="mt-1 text-xs text-rose-700">{fe.fixed_price}</p>}
       </div>
       <div className="space-y-3 sm:col-span-2">
         <FormMessage state={state} />

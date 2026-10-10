@@ -7,6 +7,7 @@ export type QuoteStatus = "pending" | "follow_up_scheduled" | "won" | "lost";
 /** pending_review and awaiting_payment are the pre-production stages of a website order. */
 export type OrderStatus = "pending_review" | "awaiting_payment" | "in_progress" | "ready" | "delivered" | "cancelled";
 export type ProofStatus = "pending" | "approved" | "rejected";
+export type FulfilmentMethod = "pickup" | "lalamove" | "courier";
 export type DeliveryStatus = "in_progress" | "ready" | "delivered";
 export type OrderSource = "referral" | "direct" | "website";
 export type PaymentMethod = "cash" | "gcash" | "maya" | "bank_transfer" | "card" | "other";
@@ -30,6 +31,8 @@ export type Profile = {
   commission_rate: number | null;
   active: boolean;
   created_at: string;
+  /** Code in the agent's personal order link (/order?ref=…). */
+  referral_code: string;
 };
 
 export type Settings = {
@@ -47,6 +50,8 @@ export type Product = {
   category: string;
   description: string | null;
   starting_price: number | null;
+  /** true = starting_price is the exact price per unit and customers can pay right away. */
+  fixed_price: boolean;
   unit: string | null;
   /** Agent commission for this product; null = use the agent's/shop default. */
   commission_rate: number | null;
@@ -137,6 +142,24 @@ export type Order = {
   public_token: string | null;
   /** What the customer wrote when ordering on the website. */
   customer_notes: string | null;
+  fulfilment: FulfilmentMethod | null;
+  delivery_name: string | null;
+  delivery_phone: string | null;
+  delivery_address: string | null;
+  /** Last customer action (ordered, uploaded artwork or a receipt). */
+  customer_activity_at: string | null;
+  /** Last time an admin opened the order. */
+  admin_seen_at: string | null;
+};
+
+export type OrderFile = {
+  id: string;
+  order_id: string;
+  storage_path: string;
+  file_name: string;
+  size_bytes: number | null;
+  content_type: string | null;
+  created_at: string;
 };
 
 export type PaymentChannel = {

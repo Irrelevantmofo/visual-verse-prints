@@ -263,9 +263,13 @@ export async function deleteOrder(formData: FormData) {
   const supabase = await createClient();
   // Customer receipts live in private storage; remove them with the order
   const { data: proofs } = await supabase.from("payment_proofs").select("storage_path").eq("order_id", id);
+  const { data: files } = await supabase.from("order_files").select("storage_path").eq("order_id", id);
   const { error } = await supabase.from("orders").delete().eq("id", id);
   if (!error && proofs?.length) {
     await supabase.storage.from("payment-proofs").remove(proofs.map((p) => p.storage_path as string));
+  }
+  if (!error && files?.length) {
+    await supabase.storage.from("order-files").remove(files.map((f) => f.storage_path as string));
   }
   revalidateStaff();
   redirect("/admin/orders");
@@ -446,6 +450,10 @@ const productSchema = z.object({
     .transform((v) => (v === undefined || v === "" ? null : Number(v)))
     .pipe(z.number().min(0).nullable()),
   unit: optionalText,
+  fixed_price: z
+    .string()
+    .optional()
+    .transform((v) => v === "on" || v === "true"),
   commission_rate: rateField,
   image_urls: z
     .string()
@@ -476,6 +484,9 @@ export async function saveProduct(_prev: ActionState, formData: FormData): Promi
   const parsed = productSchema.safeParse(formObject(formData));
   if (!parsed.success) return zodErrorState(parsed.error);
   const { id, ...fields } = parsed.data;
+  if (fields.fixed_price && !(fields.starting_price && fields.starting_price > 0)) {
+    return { error: "Check the highlighted fields and try again.", fieldErrors: { starting_price: "A fixed-price product needs a price." } };
+  }
   const imageUrls = [...new Set(fields.image_urls)];
   // image_url mirrors the cover (first photo)
   const values = { ...fields, image_urls: imageUrls, image_url: imageUrls[0] ?? null };

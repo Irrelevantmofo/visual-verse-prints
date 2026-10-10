@@ -1,4 +1,5 @@
 import Link from "next/link";
+import QRCode from "qrcode";
 import { ArrowRight, Send } from "lucide-react";
 import { Badge, ButtonLink, Card, CardHeader, EmptyState, PageHeader, StatTile } from "@/components/ui";
 import { Leaderboard } from "@/components/leaderboard";
@@ -6,6 +7,8 @@ import { ReferralProgress } from "@/components/referral-progress";
 import { fmtDateShort, fmtMonth, monthStart, php, todayISO } from "@/lib/format";
 import { isBookedOrder, REFERRAL_STAGE } from "@/lib/labels";
 import { requireRole } from "@/lib/auth";
+import { isOrderingEnabled, siteOrigin } from "@/lib/ordering";
+import { CopyButton, ShareButton } from "@/components/order/copy-button";
 import { getCommissionEarnings, getLeaderboard, getOrders, getPayouts, getReferrals } from "@/lib/queries";
 
 export const metadata = { title: "Overview" };
@@ -29,6 +32,10 @@ export default async function AgentOverview() {
   const pending = orders.reduce((s, o) => s + o.commission_pending, 0);
   const bookedMonth = orders.filter((o) => o.order_date >= from && isBookedOrder(o.order_status)).reduce((s, o) => s + o.total_amount, 0);
 
+  const orderingEnabled = await isOrderingEnabled();
+  const myLink = `${await siteOrigin()}/order?ref=${me.referral_code}`;
+  const myLinkQr = orderingEnabled ? await QRCode.toString(myLink, { type: "svg", margin: 1, errorCorrectionLevel: "M" }) : "";
+
   const mine = board.find((r) => r.agent_id === me.id);
   const ahead = mine ? board.filter((r) => r.rank < mine.rank).at(-1) : undefined;
   const firstName = me.full_name.split(" ")[0] || "there";
@@ -51,6 +58,30 @@ export default async function AgentOverview() {
         <StatTile label="Earned, all time" value={php(earnedAll)} />
         <StatTile label="Not yet paid to you" value={php(Math.max(earnedAll - paidOut, 0))} hint={`${php(paidOut)} paid out so far`} />
       </div>
+
+      {orderingEnabled && (
+        <Card className="mt-6">
+          <CardHeader
+            title="Your order link"
+            description="Share this with clients. Orders placed through it are credited to you and show up in My referrals."
+          />
+          <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center">
+            <div
+              className="size-28 shrink-0 rounded-md border border-rule bg-white p-1.5"
+              dangerouslySetInnerHTML={{ __html: myLinkQr }}
+              aria-label="QR code for your order link"
+              role="img"
+            />
+            <div className="min-w-0 flex-1 space-y-3">
+              <p className="rounded-md bg-paper-2 px-3 py-2 font-mono text-xs break-all text-graphite">{myLink}</p>
+              <div className="flex flex-wrap gap-2">
+                <CopyButton value={myLink} label="Copy link" />
+                <ShareButton url={myLink} title="Order from Visual Verse Prints" />
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_24rem]">
         <Card>

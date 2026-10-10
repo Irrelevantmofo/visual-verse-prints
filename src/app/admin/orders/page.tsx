@@ -3,7 +3,7 @@ import { Badge, ButtonLink, Card, EmptyState, PageHeader, Table, Td, Th, inputSt
 import { Tabs } from "@/components/staff/tabs";
 import { fmtDateShort, fmtMonth, monthEnd, monthStart, php, todayISO } from "@/lib/format";
 import { isBookedOrder, ORDER_STATUS, PAYMENT_STATUS } from "@/lib/labels";
-import { getAgents, getOrders, sumOrders } from "@/lib/queries";
+import { getAgents, getOrders, getWebOrderAlerts, sumOrders } from "@/lib/queries";
 
 export const metadata = { title: "Orders" };
 
@@ -24,6 +24,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
     Promise.all([getOrders({ status: "pending_review", agentId }), getOrders({ status: "awaiting_payment", agentId })]).then((r) => r.flat()),
     getAgents(),
   ]);
+  const unseen = new Set((await getWebOrderAlerts()).map((a) => a.id));
   const all = [...monthOrders, ...waiting.filter((w) => !monthOrders.some((m) => m.id === w.id))];
   const match = (f: Filter) => (o: (typeof all)[number]) =>
     f === "all" ? true : f === "unpaid" ? o.balance > 0 && isBookedOrder(o.order_status) : o.order_status === f;
@@ -109,7 +110,10 @@ export default async function OrdersPage({ searchParams }: PageProps<"/admin/ord
                     <Link href={`/admin/orders/${o.id}`} className="font-medium hover:underline">
                       {o.client_name}
                     </Link>
-                    <p className="font-mono text-[0.68rem] text-graphite">#{o.order_no}</p>
+                    <p className="font-mono text-[0.68rem] text-graphite">
+                      #{o.order_no}
+                      {unseen.has(o.id) && <span className="ml-2 rounded bg-foil px-1.5 py-0.5 font-sans text-[0.62rem] font-medium text-ink">New activity</span>}
+                    </p>
                   </Td>
                   <Td>{o.agent_name ?? <span className="text-graphite">{o.source === "website" ? "Website" : "Direct"}</span>}</Td>
                   <Td className="max-w-[16rem] text-graphite">{o.items}</Td>

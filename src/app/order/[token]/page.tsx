@@ -1,22 +1,25 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
-import { CheckCircle2, Download, Smartphone } from "lucide-react";
+import { CheckCircle2, Download, FileText, Smartphone } from "lucide-react";
 import { Badge, Card, CardHeader } from "@/components/ui";
 import { CopyButton, ShareButton } from "@/components/order/copy-button";
+import { OrderFileUpload } from "@/components/order/file-upload";
 import { ProofUploadForm } from "@/components/order/proof-upload";
 import { fmtDate, php } from "@/lib/format";
-import { CUSTOMER_ORDER_STATUS, PROOF_STATUS } from "@/lib/labels";
+import { SHOP } from "@/lib/catalog";
+import { CUSTOMER_ORDER_STATUS, FULFILMENT, PROOF_STATUS } from "@/lib/labels";
+import { formatBytes, ORDER_FILES_PER_ORDER } from "@/lib/order-files";
 import { getCustomerOrder, orderUrl } from "@/lib/ordering";
 import type { OrderStatus } from "@/types/db";
 
 export const metadata = { title: "Your order" };
 export const dynamic = "force-dynamic";
 
-const STEPS: { label: string; reached: (s: OrderStatus, paid: number) => boolean }[] = [
+const STEPS: { label: string; reached: (s: OrderStatus, fullyPaid: boolean) => boolean }[] = [
   { label: "Order received", reached: () => true },
   { label: "Price confirmed", reached: (s) => s !== "pending_review" },
-  { label: "Payment verified", reached: (_s, paid) => paid > 0 },
+  { label: "Payment verified", reached: (_s, fullyPaid) => fullyPaid },
   { label: "In production", reached: (s) => ["in_progress", "ready", "delivered"].includes(s) },
   { label: "Ready", reached: (s) => ["ready", "delivered"].includes(s) },
   { label: "Completed", reached: (s) => s === "delivered" },
@@ -27,7 +30,7 @@ export default async function CustomerOrderPage({ params, searchParams }: PagePr
   const { placed } = await searchParams;
   const data = await getCustomerOrder(token);
   if (!data) notFound();
-  const { order, items, proofs, channels } = data;
+  const { order, items, proofs, files, channels } = data;
 
   const link = await orderUrl(order.public_token);
   const linkQr = await QRCode.toString(link, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
@@ -35,16 +38,18 @@ export default async function CustomerOrderPage({ params, searchParams }: PagePr
   const priced = order.order_status !== "pending_review";
   const cancelled = order.order_status === "cancelled";
   const canPay = priced && !cancelled && order.balance > 0;
+  const fullyPaid = priced && order.total_amount > 0 && order.balance <= 0;
+  const open = !cancelled && order.order_status !== "delivered";
   const pendingProofs = proofs.filter((p) => p.status === "pending");
 
   return (
     <div className="space-y-6">
-      {placed && order.order_status === "pending_review" && (
+      {placed && (
         <div role="status" className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
           <p>
-            <span className="font-medium">We got your order.</span> Keep this page&apos;s link: it&apos;s how you track the order and pay. Save it below
-            before you close this tab.
+            <span className="font-medium">We got your order.</span> Keep this page&apos;s link: it&apos;s how you track the order, send your design
+            and pay. Save it below before you close this tab.
           </p>
         </div>
       )}
@@ -64,7 +69,7 @@ export default async function CustomerOrderPage({ params, searchParams }: PagePr
       {!cancelled && (
         <ol className="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-6">
           {STEPS.map((step, i) => {
-            const done = step.reached(order.order_status, order.paid_amount);
+            const done = step.reached(order.order_status, fullyPaid);
             return (
               <li key={step.label} className="text-center">
                 <span className={`mx-auto block h-1.5 rounded-full ${done ? "bg-foil" : "bg-rule"}`} />
@@ -116,10 +121,83 @@ export default async function CustomerOrderPage({ params, searchParams }: PagePr
         )}
       </Card>
 
+      {/* ── Design files ── */}
+      {(open || files.length > 0) && (
+        <Card>
+          <CardHeader
+            title="Your design"
+            description={open ? "Upload the artwork or reference files for this order. You can add more later from this page." : undefined}
+          />
+          {files.length > 0 && (
+            <ul className="divide-y divide-rule/70">
+              {files.map((f) => (
+                <li key={f.id} className="flex items-center gap-3 px-5 py-3 text-sm">
+                  <FileText className="size-4 shrink-0 text-graphite" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate">{f.file_name}</span>
+                  <span className="shrink-0 text-xs text-graphite">
+                    {formatBytes(f.size_bytes)} · {fmtDate(f.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {open && (
+            <div className={files.length > 0 ? "border-t border-rule p-5" : "p-5"}>
+              <OrderFileUpload token={order.public_token} remaining={ORDER_FILES_PER_ORDER - files.length} />
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── Getting the order ── */}
+      {order.fulfilment && (
+        <Card>
+          <CardHeader title={FULFILMENT[order.fulfilment].short} />
+          <div className="space-y-2 p-5 text-sm">
+            {order.fulfilment === "pickup" && <p>Collect your order from our shop in {SHOP.city}. This page will show when it&apos;s ready.</p>}
+            {order.fulfilment === "lalamove" && (
+              <>
+                <p>
+                  When this page says your order is ready, book a Lalamove rider yourself and pay the rider. Use this as the pick-up point:
+                </p>
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-paper-2 px-3 py-1.5 font-medium">{SHOP.pickupName}</span>
+                  <CopyButton value={SHOP.pickupName} label="Copy" compact />
+                </p>
+              </>
+            )}
+            {order.fulfilment === "courier" && (
+              <>
+                <p>We&apos;ll ship by J&amp;T or LBC. The shipping fee is included in your total once we confirm it.</p>
+                <dl className="rounded-md bg-paper p-3">
+                  <dt className="text-xs text-graphite">Ship to</dt>
+                  <dd className="mt-0.5 whitespace-pre-line">
+                    {order.delivery_name}
+                    {order.delivery_phone ? ` · ${order.delivery_phone}` : ""}
+                    {"\n"}
+                    {order.delivery_address}
+                  </dd>
+                </dl>
+              </>
+            )}
+            <p className="border-t border-rule pt-3 text-graphite">
+              <span className="font-medium text-ink">Lead time: {SHOP.leadTime}.</span> Need it sooner?{" "}
+              <a href={SHOP.facebookUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">
+                Message us on Facebook
+              </a>{" "}
+              to check if a rush is possible.
+            </p>
+          </div>
+        </Card>
+      )}
+
       {/* ── Pay ── */}
       {canPay && (
         <Card>
-          <CardHeader title="Pay" description={`Send ${php(order.balance)} (or your agreed downpayment), then upload the receipt below.`} />
+          <CardHeader
+            title="Pay"
+            description={`Send ${php(order.balance)}, then upload the receipt below. Full payment is required before we start printing.`}
+          />
           {channels.length === 0 ? (
             <p className="px-5 py-5 text-sm text-graphite">Message us for payment details. They&apos;ll also appear here soon.</p>
           ) : (
