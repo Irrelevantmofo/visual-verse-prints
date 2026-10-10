@@ -3,6 +3,7 @@ import { ArrowRight, MessageCircle, ExternalLink, Phone, Mail } from "lucide-rea
 import { LogoMark, Wordmark } from "@/components/logo";
 import { PressSheet, RegistrationStrip } from "@/components/marketing/press-sheet";
 import { ProductGallery } from "@/components/marketing/product-gallery";
+import { SOCIALS } from "@/components/marketing/social-links";
 import { getCatalog, SHOP } from "@/lib/catalog";
 import { phpShort } from "@/lib/format";
 import { productPhotos } from "@/lib/images";
@@ -279,6 +280,26 @@ export default async function HomePage() {
               <p className="font-mono text-xs tracking-[0.3em] text-ink/70 uppercase">Contact us</p>
               <h2 className="mt-3 font-display text-5xl font-bold uppercase sm:text-6xl">Tell us what you need printed</h2>
               <p className="mt-3 max-w-md text-ink/80">Call, text, email or message us. We&apos;ll reply with a quote.</p>
+
+              <p className="mt-10 font-mono text-xs tracking-[0.3em] text-ink/70 uppercase">Follow our work</p>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {SOCIALS.map((s) => (
+                  <li key={s.name}>
+                    <a
+                      href={s.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${s.name}: ${s.handle}`}
+                      className="inline-flex items-center gap-2.5 rounded-full border border-ink/30 py-1.5 pr-4 pl-1.5 text-sm font-medium transition-colors hover:bg-ink hover:text-foil-light"
+                    >
+                      <span className="grid size-8 place-items-center rounded-full bg-ink text-foil-light">
+                        <s.icon className="size-4" />
+                      </span>
+                      {s.handle}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
             <ul className="divide-y divide-ink/20 border-y border-ink/20">
               <li>
@@ -331,15 +352,12 @@ export default async function HomePage() {
               © {new Date().getFullYear()} {SHOP.name} · {SHOP.city}
             </span>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <a href={SHOP.phoneHref} className="hover:text-paper">
               {SHOP.phone}
             </a>
             <a href={`mailto:${SHOP.email}`} className="break-all hover:text-paper">
               {SHOP.email}
-            </a>
-            <a href={SHOP.facebookUrl} target="_blank" rel="noopener noreferrer" className="hover:text-paper">
-              Facebook
             </a>
             <a href={SHOP.messengerUrl} target="_blank" rel="noopener noreferrer" className="hover:text-paper">
               Messenger
@@ -347,6 +365,21 @@ export default async function HomePage() {
             <Link href="/login" className="hover:text-paper">
               Staff sign in
             </Link>
+            <span className="flex items-center gap-1">
+              {SOCIALS.map((s) => (
+                <a
+                  key={s.name}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${s.name}: ${s.handle}`}
+                  title={s.name}
+                  className="grid size-8 place-items-center rounded-full text-paper/70 hover:bg-paper/10 hover:text-foil-light"
+                >
+                  <s.icon className="size-4" />
+                </a>
+              ))}
+            </span>
           </div>
         </div>
       </footer>
