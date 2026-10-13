@@ -53,6 +53,14 @@ Customer actions run on the server with the secret key after checking the order 
 database access. Website orders are left out of sales totals until they reach production. To try ordering locally
 without switching it on for customers, set `ORDERING_PREVIEW=1` in `.env.local`.
 
+### Developer platform fee
+
+The developer earns 1% of every payment recorded on an order placed through the website's order form. Database triggers
+write each payment to an append-only ledger (`platform_fees`); a deleted payment or order adds a reversal line instead
+of removing history. Orders typed in by an admin don't count. Only accounts listed in `platform_developers` can read the
+ledger, at **Admin → Platform fee** (with CSV export); the list is managed with SQL and isn't reachable through the app.
+The rate lives in `private.platform_config`.
+
 ## Setup
 
 1. **Env vars:** copy `.env.example` to `.env.local` and fill in the values from Supabase → Project Settings → API.

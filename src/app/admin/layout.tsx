@@ -1,5 +1,6 @@
 import { StaffShell, type NavItem } from "@/components/staff-shell";
 import { requireRole } from "@/lib/auth";
+import { isDeveloper } from "@/lib/platform";
 import { countOrdersToPrice, countPendingProofs, countPendingReferrals, getWebOrderAlerts } from "@/lib/queries";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
@@ -25,6 +26,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
     { href: "/admin/catalog", label: "Catalog", icon: "catalog" },
     { href: "/admin/settings", label: "Settings", icon: "settings" },
   ];
+  // Only developer accounts get the platform fee report
+  if (await isDeveloper(profile.id)) nav.push({ href: "/admin/platform", label: "Platform fee", icon: "platform" });
 
   return (
     <StaffShell nav={nav} user={{ name: profile.full_name, email: profile.email }} roleLabel="Admin" accountHref="/admin/account">
