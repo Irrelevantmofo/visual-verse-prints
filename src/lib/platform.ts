@@ -65,3 +65,14 @@ export function feesByMonth(fees: PlatformFee[]): FeeMonth[] {
   }
   return [...months.values()].sort((a, b) => b.month.localeCompare(a.month));
 }
+
+export type PlatformFeeTerms = { rate: number; developer: string };
+
+/** Rate and recipient of the platform fee, for showing on order screens. Read with the service role. */
+export const getPlatformFeeTerms = cache(async (): Promise<PlatformFeeTerms | null> => {
+  if (!process.env.SUPABASE_SECRET_KEY) return null;
+  const { data } = await createAdminClient().rpc("platform_fee_terms");
+  const row = (data as { fee_rate: number | string | null; developer_name: string | null }[] | null)?.[0];
+  if (!row || row.fee_rate == null || !row.developer_name) return null;
+  return { rate: num(row.fee_rate), developer: row.developer_name };
+});

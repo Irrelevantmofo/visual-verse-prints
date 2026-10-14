@@ -35,6 +35,8 @@ export function OrderForm({
   products,
   defaults,
   commission,
+  platformFee,
+  countsForPlatformFee = false,
   prefillItems,
 }: {
   order?: Order;
@@ -44,6 +46,10 @@ export function OrderForm({
   products: Pick<Product, "id" | "name" | "commission_rate">[];
   defaults: Partial<Order> & { quoted_amount?: number; description?: string | null };
   commission: CommissionDefaults;
+  /** Who gets the website platform fee, and at what rate (shown when Source is Website). */
+  platformFee?: { rate: number; developer: string } | null;
+  /** The order was placed through the website's order form, so the platform fee applies to its payments. */
+  countsForPlatformFee?: boolean;
   /** Lines requested on the referral; the admin adds prices. */
   prefillItems?: { description: string; qty: number; product_id: string | null }[];
 }) {
@@ -301,10 +307,24 @@ export function OrderForm({
                   <span className="ml-2 font-mono text-ink">{php(commissionTotal)}</span>
                   {total > 0 && <span className="ml-1 text-xs">({pct(commissionTotal / total)} overall)</span>}
                 </>
+              ) : source === "website" && platformFee && countsForPlatformFee ? (
+                "No agent commission"
               ) : (
                 "No agent, so no commission"
               )}
             </p>
+            {source === "website" && platformFee && countsForPlatformFee && (
+              <p className="mt-0.5 text-graphite">
+                Platform fee to {platformFee.developer} ({pct(platformFee.rate)}){" "}
+                <span className="ml-2 font-mono text-ink">{php(Math.round(total * platformFee.rate * 100) / 100)}</span>
+              </p>
+            )}
+            {source === "website" && platformFee && !countsForPlatformFee && (
+              <p className="mt-1 max-w-xs text-xs text-graphite sm:ml-auto">
+                Typed in here, so it doesn&apos;t count toward {platformFee.developer}&apos;s {pct(platformFee.rate)} platform fee. Only orders placed
+                through the website&apos;s order form do.
+              </p>
+            )}
           </div>
         </div>
         {agentId && (

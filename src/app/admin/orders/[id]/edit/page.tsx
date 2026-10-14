@@ -5,6 +5,7 @@ import { Card, PageHeader } from "@/components/ui";
 import { num } from "@/lib/format";
 import { getFormOptions, getOrderFormCommission } from "@/lib/options";
 import { createClient } from "@/lib/supabase/server";
+import { getPlatformFeeTerms } from "@/lib/platform";
 import type { Order, OrderItem } from "@/types/db";
 import { OrderForm } from "../../order-form";
 
@@ -20,7 +21,7 @@ export default async function EditOrderPage({ params }: PageProps<"/admin/orders
   ]);
   if (!orderData) notFound();
   const order = orderData as Order;
-  const { agentOptions, referralOptions } = await getFormOptions(order.referral_id);
+  const [{ agentOptions, referralOptions }, platformFee] = await Promise.all([getFormOptions(order.referral_id), getPlatformFeeTerms()]);
 
   return (
     <>
@@ -42,6 +43,8 @@ export default async function EditOrderPage({ params }: PageProps<"/admin/orders
           referrals={referralOptions}
           products={products}
           commission={commission}
+          platformFee={platformFee}
+          countsForPlatformFee={Boolean(order.public_token)}
           defaults={{}}
         />
       </Card>

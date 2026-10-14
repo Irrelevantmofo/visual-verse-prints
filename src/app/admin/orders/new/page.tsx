@@ -5,6 +5,7 @@ import { isISODate, num, todayISO } from "@/lib/format";
 import { getFormOptions, getOrderFormCommission } from "@/lib/options";
 import { createClient } from "@/lib/supabase/server";
 import { getReferralItems } from "@/lib/queries";
+import { getPlatformFeeTerms } from "@/lib/platform";
 import type { Quotation } from "@/types/db";
 import { OrderForm } from "../order-form";
 
@@ -22,9 +23,10 @@ export default async function NewOrderPage({ searchParams }: PageProps<"/admin/o
   }
   const referralId = quote?.referral_id ?? (typeof sp.referral === "string" ? sp.referral : undefined);
 
-  const [{ agentOptions, referralOptions }, { products, commission }] = await Promise.all([
+  const [{ agentOptions, referralOptions }, { products, commission }, platformFee] = await Promise.all([
     getFormOptions(referralId),
     getOrderFormCommission(),
+    getPlatformFeeTerms(),
   ]);
   const ref = referralOptions.find((r) => r.id === referralId);
   // Starting from a referral (not a quote): begin with the products the agent listed
@@ -42,6 +44,7 @@ export default async function NewOrderPage({ searchParams }: PageProps<"/admin/o
           referrals={referralOptions}
           products={products}
           commission={commission}
+          platformFee={platformFee}
           prefillItems={requested.map((i) => ({ description: i.details ? `${i.description} (${i.details})` : i.description, qty: i.qty, product_id: i.product_id }))}
           defaults={{
             order_date: isISODate(sp.date) ? sp.date : todayISO(),

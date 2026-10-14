@@ -8,6 +8,7 @@ import { fmtDate, num, pct, php, todayISO } from "@/lib/format";
 import { DELIVERY_STATUS, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, FULFILMENT } from "@/lib/labels";
 import { getOrder } from "@/lib/queries";
 import { orderUrl } from "@/lib/ordering";
+import { getPlatformFeeTerms } from "@/lib/platform";
 import { formatBytes } from "@/lib/order-files";
 import { CopyButton } from "@/components/order/copy-button";
 import { createClient } from "@/lib/supabase/server";
@@ -50,6 +51,7 @@ export default async function OrderDetailPage({ params }: PageProps<"/admin/orde
   // Opening the order clears its "new activity" flag
   if (order.source === "website") await supabase.from("orders").update({ admin_seen_at: new Date().toISOString() }).eq("id", id);
   const customerLink = web?.public_token ? await orderUrl(web.public_token as string) : null;
+  const platformFee = order.source === "website" ? await getPlatformFeeTerms() : null;
   const isWebsiteOrder = order.source === "website";
   const unpriced = countUnpriced(itemsData);
   const items = (itemsData ?? []) as OrderItem[];
@@ -113,6 +115,12 @@ export default async function OrderDetailPage({ params }: PageProps<"/admin/orde
                   <ConfirmPriceForm id={id} total={order.total_amount} />
                 </div>
               </div>
+            )}
+            {platformFee && web?.public_token && (
+              <p className="rounded-md border border-rule bg-paper px-3 py-2">
+                Placed through the website, so {pct(platformFee.rate)} of its payments goes to {platformFee.developer} as the platform fee
+                {order.total_amount > 0 && <> ({php(Math.round(order.total_amount * platformFee.rate * 100) / 100)} on the full total)</>}.
+              </p>
             )}
             {fulfilment && (
               <div>
