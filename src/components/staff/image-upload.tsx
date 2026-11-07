@@ -93,7 +93,7 @@ export function ImageGalleryUpload({
 
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {urls.map((url, i) => (
-          <li key={url} className="group relative aspect-[4/3] overflow-hidden rounded-md border border-rule bg-paper-2">
+          <li key={url} className="group relative aspect-square overflow-hidden rounded-md border border-rule bg-paper-2">
             <Image src={url} alt={`${alt} photo ${i + 1}`} fill sizes="200px" className="object-cover" />
             {i === 0 && (
               <span className="absolute top-1.5 left-1.5 rounded bg-ink px-1.5 py-0.5 font-mono text-[0.6rem] tracking-wider text-foil-light uppercase">
@@ -134,7 +134,7 @@ export function ImageGalleryUpload({
         ))}
 
         {Array.from({ length: uploading }, (_, i) => (
-          <li key={`up-${i}`} className="grid aspect-[4/3] place-items-center rounded-md border border-dashed border-rule bg-paper-2 text-graphite">
+          <li key={`up-${i}`} className="grid aspect-square place-items-center rounded-md border border-dashed border-rule bg-paper-2 text-graphite">
             <Loader2 className="size-5 animate-spin" aria-hidden />
           </li>
         ))}
@@ -144,7 +144,7 @@ export function ImageGalleryUpload({
             <label
               htmlFor={inputId}
               className={cx(
-                "grid aspect-[4/3] cursor-pointer place-items-center rounded-md border border-dashed border-graphite/40 bg-white text-center text-sm text-graphite hover:border-foil hover:text-ink",
+                "grid aspect-square cursor-pointer place-items-center rounded-md border border-dashed border-graphite/40 bg-white text-center text-sm text-graphite hover:border-foil hover:text-ink",
                 uploading > 0 && "pointer-events-none opacity-50",
               )}
             >
@@ -168,8 +168,9 @@ export function ImageGalleryUpload({
       </ul>
 
       <p className="mt-2 text-xs text-graphite">
-        {urls.length} of {MAX_PRODUCT_IMAGES} photos. Select several at once. The first is the cover; use the arrows to reorder. Changes show on the
-        website after you save the product.
+        {urls.length} of {MAX_PRODUCT_IMAGES} photos. Square (1:1) images fit the website cards exactly; other shapes are trimmed to a square,
+        as these previews show. Select several at once. The first is the cover; use the arrows to reorder. Changes show on the website after you
+        save the product.
       </p>
       {uploading > 0 && (
         <p role="status" className="mt-1 text-xs text-graphite">

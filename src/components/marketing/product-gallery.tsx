@@ -64,7 +64,7 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
   }, [viewer, step]);
 
   return (
-    <div className="relative aspect-[4/3] bg-paper-2" role="group" aria-roledescription="carousel" aria-label={`${name} photos`}>
+    <div className="relative aspect-square bg-paper-2" role="group" aria-roledescription="carousel" aria-label={`${name} photos`}>
       <div
         ref={trackRef}
         onScroll={onScroll}

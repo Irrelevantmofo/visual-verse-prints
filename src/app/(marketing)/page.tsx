@@ -150,7 +150,7 @@ export default async function HomePage() {
                       // No photos yet: a quiet branded tile so the grid stays even
                       <div
                         aria-hidden
-                        className="grid aspect-[4/3] place-items-center bg-paper-2 text-ink/10 transition-colors group-hover:bg-ink-2 group-hover:text-paper/10"
+                        className="grid aspect-square place-items-center bg-paper-2 text-ink/10 transition-colors group-hover:bg-ink-2 group-hover:text-paper/10"
                       >
                         <LogoMark className="size-16" />
                       </div>
